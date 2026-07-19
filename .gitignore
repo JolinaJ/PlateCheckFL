@@ -4,3 +4,4 @@ dist/
 .vite/
 data/raw/
 data/processed/
+.claude/settings.local.json
