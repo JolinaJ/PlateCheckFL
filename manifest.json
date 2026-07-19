@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "PlateCheck FL",
+  "version": "0.1.0",
+  "description": "Restaurant inspection information from official public records (Florida DBPR, NYC DOHMH), inline on Google Search results.",
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.google.com/search*",
+        "https://www.google.com/search?*"
+      ],
+      "js": ["src/content/index.ts"]
+    }
+  ],
+  "background": {
+    "service_worker": "src/background/service-worker.ts",
+    "type": "module"
+  },
+  "permissions": [],
+  "host_permissions": [
+    "https://www.myfloridalicense.com/*"
+  ]
+}

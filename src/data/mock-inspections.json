@@ -1,0 +1,1594 @@
+[
+  {
+    "licenseId": "DEMO-FL-0001",
+    "name": "Sunshine Grill [PlateCheck Demo]",
+    "address": {
+      "street": "1420 Palm Avenue",
+      "city": "Tampa",
+      "state": "FL",
+      "zip": "33601"
+    },
+    "phone": "(813) 555-0101",
+    "inspections": [
+      {
+        "date": "2025-11-14",
+        "type": "routine",
+        "outcome": "pass",
+        "violations": []
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0002",
+    "name": "Sunshine Grill [PlateCheck Demo]",
+    "address": {
+      "street": "780 Coral Way",
+      "city": "Miami",
+      "state": "FL",
+      "zip": "33145"
+    },
+    "phone": "(305) 555-0202",
+    "inspections": [
+      {
+        "date": "2025-10-03",
+        "type": "routine",
+        "outcome": "pass_with_conditions",
+        "violations": [
+          {
+            "code": "V-101",
+            "description": "Improper cold holding temperature observed",
+            "severity": "priority",
+            "isRepeat": false
+          }
+        ]
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0003",
+    "name": "La Palma Cubana [PlateCheck Demo]",
+    "address": {
+      "street": "3305 W Flagler Street",
+      "city": "Miami",
+      "state": "FL",
+      "zip": "33135"
+    },
+    "phone": "(305) 555-0303",
+    "inspections": [
+      {
+        "date": "2025-12-01",
+        "type": "routine",
+        "outcome": "pass",
+        "violations": []
+      },
+      {
+        "date": "2025-06-18",
+        "type": "routine",
+        "outcome": "pass_with_conditions",
+        "violations": [
+          {
+            "code": "V-202",
+            "description": "Handwash sink not accessible",
+            "severity": "intermediate",
+            "isRepeat": false
+          }
+        ]
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0004",
+    "name": "Tony's Ristorante [PlateCheck Demo]",
+    "address": {
+      "street": "915 N Monroe Street",
+      "city": "Tallahassee",
+      "state": "FL",
+      "zip": "32303"
+    },
+    "phone": "(850) 555-0404",
+    "inspections": [
+      {
+        "date": "2025-09-22",
+        "type": "routine",
+        "outcome": "follow_up_required",
+        "violations": [
+          {
+            "code": "V-103",
+            "description": "Rodent activity observed",
+            "severity": "priority",
+            "isRepeat": false
+          },
+          {
+            "code": "V-301",
+            "description": "Floor not properly maintained",
+            "severity": "basic",
+            "isRepeat": false
+          }
+        ]
+      },
+      {
+        "date": "2025-10-10",
+        "type": "follow_up",
+        "outcome": "pass",
+        "violations": []
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0005",
+    "name": "Bayside Seafood & Oyster Bar [PlateCheck Demo]",
+    "address": {
+      "street": "2200 Bayshore Boulevard",
+      "city": "Tampa",
+      "state": "FL",
+      "zip": "33606"
+    },
+    "phone": "(813) 555-0505",
+    "inspections": [
+      {
+        "date": "2025-11-30",
+        "type": "routine",
+        "outcome": "pass",
+        "violations": [
+          {
+            "code": "V-302",
+            "description": "Ceiling tile missing or damaged",
+            "severity": "basic",
+            "isRepeat": false
+          }
+        ]
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0006",
+    "name": "Bayside Seafood and Oyster Bar [PlateCheck Demo]",
+    "address": {
+      "street": "445 Ocean Drive, Suite 100",
+      "city": "Fort Lauderdale",
+      "state": "FL",
+      "zip": "33316"
+    },
+    "phone": "(954) 555-0606",
+    "inspections": [
+      {
+        "date": "2025-08-15",
+        "type": "routine",
+        "outcome": "pass_with_conditions",
+        "violations": [
+          {
+            "code": "V-104",
+            "description": "Improper hot holding temperature observed",
+            "severity": "priority",
+            "isRepeat": true
+          },
+          {
+            "code": "V-203",
+            "description": "Sanitizer concentration too low",
+            "severity": "intermediate",
+            "isRepeat": false
+          }
+        ]
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0007",
+    "name": "El Rincón de Abuela [PlateCheck Demo]",
+    "address": {
+      "street": "1100 Calle Ocho",
+      "city": "Miami",
+      "state": "FL",
+      "zip": "33130"
+    },
+    "phone": "(305) 555-0707",
+    "inspections": [
+      {
+        "date": "2025-12-10",
+        "type": "routine",
+        "outcome": "pass",
+        "violations": []
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0008",
+    "name": "Golden Dragon Chinese Restaurant [PlateCheck Demo]",
+    "address": {
+      "street": "5520 S Orange Blossom Trail",
+      "city": "Orlando",
+      "state": "FL",
+      "zip": "32839"
+    },
+    "phone": "(407) 555-0808",
+    "inspections": [
+      {
+        "date": "2025-07-20",
+        "type": "routine",
+        "outcome": "pass_with_conditions",
+        "violations": [
+          {
+            "code": "V-105",
+            "description": "Raw animal food stored above ready-to-eat food",
+            "severity": "priority",
+            "isRepeat": false
+          },
+          {
+            "code": "V-204",
+            "description": "Employee touching ready-to-eat food with bare hands",
+            "severity": "intermediate",
+            "isRepeat": false
+          }
+        ]
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0009",
+    "name": "Magnolia Kitchen & Bar [PlateCheck Demo]",
+    "address": {
+      "street": "320 Magnolia Avenue",
+      "city": "Orlando",
+      "state": "FL",
+      "zip": "32801"
+    },
+    "phone": "(407) 555-0909",
+    "inspections": [
+      {
+        "date": "2025-10-28",
+        "type": "routine",
+        "outcome": "pass",
+        "violations": [
+          {
+            "code": "V-303",
+            "description": "Light shield or shatter-proof bulb missing",
+            "severity": "basic",
+            "isRepeat": false
+          }
+        ]
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0010",
+    "name": "Papi's Taqueria [PlateCheck Demo]",
+    "address": {
+      "street": "600 W Vine Street",
+      "city": "Kissimmee",
+      "state": "FL",
+      "zip": "34741"
+    },
+    "phone": "(407) 555-1010",
+    "inspections": [
+      {
+        "date": "2025-11-05",
+        "type": "routine",
+        "outcome": "pass",
+        "violations": []
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0011",
+    "name": "Papi's Taqueria [PlateCheck Demo]",
+    "address": {
+      "street": "1825 N Dale Mabry Highway",
+      "city": "Tampa",
+      "state": "FL",
+      "zip": "33607"
+    },
+    "phone": "(813) 555-1111",
+    "inspections": [
+      {
+        "date": "2025-09-12",
+        "type": "routine",
+        "outcome": "follow_up_required",
+        "violations": [
+          {
+            "code": "V-106",
+            "description": "No certified food manager on duty",
+            "severity": "priority",
+            "isRepeat": true
+          },
+          {
+            "code": "V-205",
+            "description": "Food contact surfaces not properly sanitized",
+            "severity": "intermediate",
+            "isRepeat": false
+          }
+        ]
+      },
+      {
+        "date": "2025-09-26",
+        "type": "follow_up",
+        "outcome": "pass_with_conditions",
+        "violations": [
+          {
+            "code": "V-205",
+            "description": "Food contact surfaces not properly sanitized",
+            "severity": "intermediate",
+            "isRepeat": true
+          }
+        ]
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0012",
+    "name": "Harbor House Grille [PlateCheck Demo]",
+    "address": {
+      "street": "88 Wharf Road",
+      "city": "Pensacola",
+      "state": "FL",
+      "zip": "32502"
+    },
+    "phone": "(850) 555-1212",
+    "inspections": [
+      {
+        "date": "2025-12-05",
+        "type": "routine",
+        "outcome": "pass",
+        "violations": []
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0013",
+    "name": "Harbor House Grill [PlateCheck Demo]",
+    "address": {
+      "street": "2040 Beach Boulevard",
+      "city": "Jacksonville",
+      "state": "FL",
+      "zip": "32207"
+    },
+    "phone": "(904) 555-1313",
+    "inspections": [
+      {
+        "date": "2025-10-18",
+        "type": "routine",
+        "outcome": "pass_with_conditions",
+        "violations": [
+          {
+            "code": "V-107",
+            "description": "Toxic substances improperly stored near food",
+            "severity": "priority",
+            "isRepeat": false
+          }
+        ]
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0014",
+    "name": "Café Mariposa [PlateCheck Demo]",
+    "address": {
+      "street": "710 Duval Street",
+      "city": "Key West",
+      "state": "FL",
+      "zip": "33040"
+    },
+    "phone": "(305) 555-1414",
+    "inspections": [
+      {
+        "date": "2025-11-22",
+        "type": "routine",
+        "outcome": "pass",
+        "violations": [
+          {
+            "code": "V-304",
+            "description": "Exit signs not illuminated",
+            "severity": "basic",
+            "isRepeat": false
+          }
+        ]
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0015",
+    "name": "The Rustic Hen [PlateCheck Demo]",
+    "address": {
+      "street": "430 S Beach Street",
+      "city": "Daytona Beach",
+      "state": "FL",
+      "zip": "32114"
+    },
+    "phone": "(386) 555-1515",
+    "inspections": [
+      {
+        "date": "2025-08-30",
+        "type": "routine",
+        "outcome": "pass",
+        "violations": []
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0016",
+    "name": "Mango Tree Bistro [PlateCheck Demo]",
+    "address": {
+      "street": "1560 Clematis Street",
+      "city": "West Palm Beach",
+      "state": "FL",
+      "zip": "33401"
+    },
+    "phone": "(561) 555-1616",
+    "inspections": [
+      {
+        "date": "2025-10-12",
+        "type": "routine",
+        "outcome": "pass_with_conditions",
+        "violations": [
+          {
+            "code": "V-108",
+            "description": "Food not properly date-marked",
+            "severity": "priority",
+            "isRepeat": false
+          },
+          {
+            "code": "V-305",
+            "description": "Nonfood-contact surface soiled",
+            "severity": "basic",
+            "isRepeat": false
+          }
+        ]
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0017",
+    "name": "Mango Tree Bistro [PlateCheck Demo], LLC",
+    "address": {
+      "street": "1560 Clematis St",
+      "city": "West Palm Beach",
+      "state": "FL",
+      "zip": "33401-1234"
+    },
+    "phone": "561-555-1616",
+    "inspections": [
+      {
+        "date": "2025-10-12",
+        "type": "routine",
+        "outcome": "pass_with_conditions",
+        "violations": [
+          {
+            "code": "V-108",
+            "description": "Food not properly date-marked",
+            "severity": "priority",
+            "isRepeat": false
+          }
+        ]
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0018",
+    "name": "Flamingo Diner [PlateCheck Demo]",
+    "address": {
+      "street": "225 E Commercial Boulevard",
+      "city": "Fort Lauderdale",
+      "state": "FL",
+      "zip": "33334"
+    },
+    "phone": "(954) 555-1818",
+    "inspections": [
+      {
+        "date": "2025-11-08",
+        "type": "routine",
+        "outcome": "pass",
+        "violations": []
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0019",
+    "name": "Blue Marlin Tap & Grill [PlateCheck Demo]",
+    "address": {
+      "street": "950 Gulf Boulevard",
+      "city": "Clearwater",
+      "state": "FL",
+      "zip": "33767"
+    },
+    "phone": "(727) 555-1919",
+    "inspections": [
+      {
+        "date": "2025-07-10",
+        "type": "routine",
+        "outcome": "follow_up_required",
+        "violations": [
+          {
+            "code": "V-109",
+            "description": "Live insects observed in kitchen area",
+            "severity": "priority",
+            "isRepeat": false
+          },
+          {
+            "code": "V-206",
+            "description": "Cutting board deeply scored and not resurfaceable",
+            "severity": "intermediate",
+            "isRepeat": false
+          },
+          {
+            "code": "V-306",
+            "description": "Garbage receptacle not covered",
+            "severity": "basic",
+            "isRepeat": false
+          }
+        ]
+      },
+      {
+        "date": "2025-07-25",
+        "type": "follow_up",
+        "outcome": "pass",
+        "violations": []
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0020",
+    "name": "Blue Marlin Tap and Grill [PlateCheck Demo]",
+    "address": {
+      "street": "3120 Rickenbacker Causeway",
+      "city": "Miami",
+      "state": "FL",
+      "zip": "33149"
+    },
+    "phone": "(305) 555-2020",
+    "inspections": [
+      {
+        "date": "2025-09-05",
+        "type": "routine",
+        "outcome": "pass",
+        "violations": [
+          {
+            "code": "V-307",
+            "description": "Mop sink not properly maintained",
+            "severity": "basic",
+            "isRepeat": false
+          }
+        ]
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0021",
+    "name": "Crescent Moon Thai [PlateCheck Demo]",
+    "address": {
+      "street": "4480 N Federal Highway",
+      "city": "Boca Raton",
+      "state": "FL",
+      "zip": "33431"
+    },
+    "phone": "(561) 555-2121",
+    "inspections": [
+      {
+        "date": "2025-12-15",
+        "type": "routine",
+        "outcome": "pass",
+        "violations": []
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0022",
+    "name": "Sawgrass Smokehouse [PlateCheck Demo]",
+    "address": {
+      "street": "6700 Sawgrass Lane",
+      "city": "Gainesville",
+      "state": "FL",
+      "zip": "32608"
+    },
+    "phone": "(352) 555-2222",
+    "inspections": [
+      {
+        "date": "2025-06-25",
+        "type": "routine",
+        "outcome": "pass_with_conditions",
+        "violations": [
+          {
+            "code": "V-110",
+            "description": "Improper cooling of cooked food",
+            "severity": "priority",
+            "isRepeat": true
+          },
+          {
+            "code": "V-207",
+            "description": "Wiping cloths not stored in sanitizer between uses",
+            "severity": "intermediate",
+            "isRepeat": false
+          }
+        ]
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0023",
+    "name": "Coral Springs Pizza [PlateCheck Demo], Co.",
+    "address": {
+      "street": "1900 University Drive",
+      "city": "Coral Springs",
+      "state": "FL",
+      "zip": "33071"
+    },
+    "phone": "(954) 555-2323",
+    "inspections": [
+      {
+        "date": "2025-11-18",
+        "type": "routine",
+        "outcome": "pass",
+        "violations": []
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0024",
+    "name": "Coral Springs Pizza Company [PlateCheck Demo]",
+    "address": {
+      "street": "1900 University Dr, Unit B",
+      "city": "Coral Springs",
+      "state": "FL",
+      "zip": "33071"
+    },
+    "phone": "(954) 555-2323",
+    "inspections": [
+      {
+        "date": "2025-11-18",
+        "type": "routine",
+        "outcome": "pass",
+        "violations": []
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0025",
+    "name": "Nonna's Italian Kitchen [PlateCheck Demo]",
+    "address": {
+      "street": "520 Las Olas Boulevard",
+      "city": "Fort Lauderdale",
+      "state": "FL",
+      "zip": "33301"
+    },
+    "phone": "(954) 555-2525",
+    "inspections": [
+      {
+        "date": "2025-10-30",
+        "type": "routine",
+        "outcome": "pass",
+        "violations": [
+          {
+            "code": "V-308",
+            "description": "Employee personal items stored with food",
+            "severity": "basic",
+            "isRepeat": false
+          }
+        ]
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0026",
+    "name": "Riverwalk Brunch House [PlateCheck Demo]",
+    "address": {
+      "street": "200 SW 1st Avenue",
+      "city": "Fort Lauderdale",
+      "state": "FL",
+      "zip": "33301"
+    },
+    "phone": "(954) 555-2626",
+    "inspections": [
+      {
+        "date": "2025-09-15",
+        "type": "routine",
+        "outcome": "pass",
+        "violations": []
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0027",
+    "name": "Palmetto Grill & Raw Bar [PlateCheck Demo]",
+    "address": {
+      "street": "315 E Bay Street",
+      "city": "Jacksonville",
+      "state": "FL",
+      "zip": "32202"
+    },
+    "phone": "(904) 555-2727",
+    "inspections": [
+      {
+        "date": "2025-08-22",
+        "type": "routine",
+        "outcome": "pass_with_conditions",
+        "violations": [
+          {
+            "code": "V-111",
+            "description": "No proof of required employee training",
+            "severity": "priority",
+            "isRepeat": false
+          }
+        ]
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0028",
+    "name": "Cocina del Sol [PlateCheck Demo]",
+    "address": {
+      "street": "830 Espanola Way",
+      "city": "Miami Beach",
+      "state": "FL",
+      "zip": "33139"
+    },
+    "phone": "(305) 555-2828",
+    "inspections": [
+      {
+        "date": "2025-12-20",
+        "type": "routine",
+        "outcome": "pass",
+        "violations": []
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0029",
+    "name": "Pelican Point Café [PlateCheck Demo]",
+    "address": {
+      "street": "1400 Gulf Shore Boulevard N",
+      "city": "Naples",
+      "state": "FL",
+      "zip": "34102"
+    },
+    "phone": "(239) 555-2929",
+    "inspections": [
+      {
+        "date": "2025-07-14",
+        "type": "routine",
+        "outcome": "follow_up_required",
+        "violations": [
+          {
+            "code": "V-112",
+            "description": "Improper reheating of food for hot holding",
+            "severity": "priority",
+            "isRepeat": false
+          },
+          {
+            "code": "V-208",
+            "description": "Single-service items reused",
+            "severity": "intermediate",
+            "isRepeat": false
+          }
+        ]
+      },
+      {
+        "date": "2025-07-30",
+        "type": "follow_up",
+        "outcome": "pass",
+        "violations": []
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0030",
+    "name": "Island Jerk Shack [PlateCheck Demo]",
+    "address": {
+      "street": "2250 Dr. Martin Luther King Jr. Street S",
+      "city": "St. Petersburg",
+      "state": "FL",
+      "zip": "33705"
+    },
+    "phone": "(727) 555-3030",
+    "inspections": [
+      {
+        "date": "2025-11-02",
+        "type": "routine",
+        "outcome": "pass",
+        "violations": [
+          {
+            "code": "V-309",
+            "description": "Walk-in cooler gasket torn",
+            "severity": "basic",
+            "isRepeat": false
+          }
+        ]
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0031",
+    "name": "Sunrise Pho [PlateCheck Demo]",
+    "address": {
+      "street": "7230 W Colonial Drive",
+      "city": "Orlando",
+      "state": "FL",
+      "zip": "32818"
+    },
+    "phone": "(407) 555-3131",
+    "inspections": [
+      {
+        "date": "2025-10-05",
+        "type": "routine",
+        "outcome": "pass",
+        "violations": []
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0032",
+    "name": "Captain's Catch Seafood [PlateCheck Demo]",
+    "address": {
+      "street": "505 Seabreeze Boulevard",
+      "city": "Daytona Beach",
+      "state": "FL",
+      "zip": "32118"
+    },
+    "phone": "(386) 555-3232",
+    "inspections": [
+      {
+        "date": "2025-08-10",
+        "type": "routine",
+        "outcome": "pass_with_conditions",
+        "violations": [
+          {
+            "code": "V-113",
+            "description": "Shellfish tags not retained for 90 days",
+            "severity": "priority",
+            "isRepeat": false
+          },
+          {
+            "code": "V-209",
+            "description": "Thermometer not available in cold holding unit",
+            "severity": "intermediate",
+            "isRepeat": false
+          }
+        ]
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0033",
+    "name": "Sweet Magnolia Bakery & Café [PlateCheck Demo]",
+    "address": {
+      "street": "120 S Park Avenue",
+      "city": "Winter Park",
+      "state": "FL",
+      "zip": "32789"
+    },
+    "phone": "(407) 555-3333",
+    "inspections": [
+      {
+        "date": "2025-12-08",
+        "type": "routine",
+        "outcome": "pass",
+        "violations": []
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0034",
+    "name": "The Gilded Fork [PlateCheck Demo]",
+    "address": {
+      "street": "880 5th Avenue S",
+      "city": "Naples",
+      "state": "FL",
+      "zip": "34102"
+    },
+    "phone": "(239) 555-3434",
+    "inspections": [
+      {
+        "date": "2025-09-28",
+        "type": "routine",
+        "outcome": "pass",
+        "violations": [
+          {
+            "code": "V-310",
+            "description": "Food stored on floor",
+            "severity": "basic",
+            "isRepeat": true
+          }
+        ]
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0035",
+    "name": "Banyan Street Tacos [PlateCheck Demo]",
+    "address": {
+      "street": "660 Banyan Boulevard",
+      "city": "West Palm Beach",
+      "state": "FL",
+      "zip": "33401"
+    },
+    "phone": "(561) 555-3535",
+    "inspections": [
+      {
+        "date": "2025-06-30",
+        "type": "routine",
+        "outcome": "pass",
+        "violations": []
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0036",
+    "name": "Palms Mediterranean Grill [PlateCheck Demo]",
+    "address": {
+      "street": "3350 NW 2nd Avenue",
+      "city": "Miami",
+      "state": "FL",
+      "zip": "33127"
+    },
+    "phone": "(305) 555-3636",
+    "inspections": [
+      {
+        "date": "2025-11-25",
+        "type": "routine",
+        "outcome": "pass_with_conditions",
+        "violations": [
+          {
+            "code": "V-114",
+            "description": "Food from unapproved source",
+            "severity": "priority",
+            "isRepeat": false
+          }
+        ]
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0037",
+    "name": "Lucky Chopsticks [PlateCheck Demo]",
+    "address": {
+      "street": "2810 E Hillsborough Avenue",
+      "city": "Tampa",
+      "state": "FL",
+      "zip": "33610"
+    },
+    "phone": "(813) 555-3737",
+    "inspections": [
+      {
+        "date": "2025-10-20",
+        "type": "routine",
+        "outcome": "pass",
+        "violations": []
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0038",
+    "name": "Salt & Ember Steakhouse [PlateCheck Demo]",
+    "address": {
+      "street": "150 2nd Avenue N",
+      "city": "St. Petersburg",
+      "state": "FL",
+      "zip": "33701"
+    },
+    "phone": "(727) 555-3838",
+    "inspections": [
+      {
+        "date": "2025-09-08",
+        "type": "routine",
+        "outcome": "follow_up_required",
+        "violations": [
+          {
+            "code": "V-115",
+            "description": "Cross-contamination between raw and cooked foods",
+            "severity": "priority",
+            "isRepeat": false
+          },
+          {
+            "code": "V-210",
+            "description": "Dishwasher not reaching required temperature",
+            "severity": "intermediate",
+            "isRepeat": false
+          },
+          {
+            "code": "V-311",
+            "description": "Restroom not properly supplied",
+            "severity": "basic",
+            "isRepeat": false
+          }
+        ]
+      },
+      {
+        "date": "2025-09-22",
+        "type": "follow_up",
+        "outcome": "pass",
+        "violations": []
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0039",
+    "name": "Shoreline Wings & Things [PlateCheck Demo]",
+    "address": {
+      "street": "4100 N Tamiami Trail",
+      "city": "Sarasota",
+      "state": "FL",
+      "zip": "34234"
+    },
+    "phone": "(941) 555-3939",
+    "inspections": [
+      {
+        "date": "2025-08-18",
+        "type": "routine",
+        "outcome": "pass",
+        "violations": [
+          {
+            "code": "V-312",
+            "description": "Exterior door left open without screen",
+            "severity": "basic",
+            "isRepeat": false
+          }
+        ]
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0040",
+    "name": "Bayfront Burgers [PlateCheck Demo], Inc.",
+    "address": {
+      "street": "1 Bayfront Drive, Ste 200",
+      "city": "Sarasota",
+      "state": "FL",
+      "zip": "34236"
+    },
+    "phone": "(941) 555-4040",
+    "inspections": [
+      {
+        "date": "2025-11-10",
+        "type": "routine",
+        "outcome": "pass",
+        "violations": []
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0041",
+    "name": "Bayfront Burgers [PlateCheck Demo]",
+    "address": {
+      "street": "1 Bayfront Drive, Suite 200",
+      "city": "Sarasota",
+      "state": "FL",
+      "zip": "34236"
+    },
+    "phone": "(941) 555-4040",
+    "inspections": [
+      {
+        "date": "2025-11-10",
+        "type": "routine",
+        "outcome": "pass",
+        "violations": []
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0042",
+    "name": "Oleander Café [PlateCheck Demo]",
+    "address": {
+      "street": "925 Central Avenue",
+      "city": "St. Petersburg",
+      "state": "FL",
+      "zip": "33705"
+    },
+    "phone": "(727) 555-4242",
+    "inspections": [
+      {
+        "date": "2025-07-05",
+        "type": "routine",
+        "outcome": "pass_with_conditions",
+        "violations": [
+          {
+            "code": "V-116",
+            "description": "Potentially hazardous food not discarded within required time",
+            "severity": "priority",
+            "isRepeat": false
+          },
+          {
+            "code": "V-211",
+            "description": "Ice machine not cleaned at required frequency",
+            "severity": "intermediate",
+            "isRepeat": true
+          }
+        ]
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0043",
+    "name": "Seminole Smokehouse BBQ [PlateCheck Demo]",
+    "address": {
+      "street": "5500 Seminole Boulevard",
+      "city": "Seminole",
+      "state": "FL",
+      "zip": "33772"
+    },
+    "phone": "(727) 555-4343",
+    "inspections": [
+      {
+        "date": "2025-12-12",
+        "type": "routine",
+        "outcome": "pass",
+        "violations": []
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0044",
+    "name": "Rio Grande Tex-Mex [PlateCheck Demo]",
+    "address": {
+      "street": "3040 N Rocky Point Drive E",
+      "city": "Tampa",
+      "state": "FL",
+      "zip": "33607"
+    },
+    "phone": "(813) 555-4444",
+    "inspections": [
+      {
+        "date": "2025-10-15",
+        "type": "routine",
+        "outcome": "pass",
+        "violations": [
+          {
+            "code": "V-313",
+            "description": "Grease trap not properly maintained",
+            "severity": "basic",
+            "isRepeat": false
+          }
+        ]
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0045",
+    "name": "Emerald Coast Crab Shack [PlateCheck Demo]",
+    "address": {
+      "street": "1020 Highway 98 E",
+      "city": "Destin",
+      "state": "FL",
+      "zip": "32541"
+    },
+    "phone": "(850) 555-4545",
+    "inspections": [
+      {
+        "date": "2025-06-12",
+        "type": "routine",
+        "outcome": "follow_up_required",
+        "violations": [
+          {
+            "code": "V-117",
+            "description": "Sewage or wastewater backup observed",
+            "severity": "priority",
+            "isRepeat": false
+          }
+        ]
+      },
+      {
+        "date": "2025-06-20",
+        "type": "follow_up",
+        "outcome": "pass",
+        "violations": []
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0046",
+    "name": "Ocean Breeze Sushi [PlateCheck Demo]",
+    "address": {
+      "street": "740 Arthur Godfrey Road",
+      "city": "Miami Beach",
+      "state": "FL",
+      "zip": "33140"
+    },
+    "phone": "(305) 555-4646",
+    "inspections": [
+      {
+        "date": "2025-11-15",
+        "type": "routine",
+        "outcome": "pass",
+        "violations": []
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0047",
+    "name": "Poinciana Soul Food [PlateCheck Demo]",
+    "address": {
+      "street": "2610 Silver Star Road",
+      "city": "Orlando",
+      "state": "FL",
+      "zip": "32808"
+    },
+    "phone": "(407) 555-4747",
+    "inspections": [
+      {
+        "date": "2025-09-18",
+        "type": "routine",
+        "outcome": "pass_with_conditions",
+        "violations": [
+          {
+            "code": "V-118",
+            "description": "Inadequate cooking temperature for poultry",
+            "severity": "priority",
+            "isRepeat": false
+          },
+          {
+            "code": "V-212",
+            "description": "Food preparation area not adequately ventilated",
+            "severity": "intermediate",
+            "isRepeat": false
+          },
+          {
+            "code": "V-314",
+            "description": "No self-closing device on restroom door",
+            "severity": "basic",
+            "isRepeat": false
+          }
+        ]
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0048",
+    "name": "Cypress Table [PlateCheck Demo]",
+    "address": {
+      "street": "480 W Cypress Street",
+      "city": "Lakeland",
+      "state": "FL",
+      "zip": "33815"
+    },
+    "phone": "(863) 555-4848",
+    "inspections": [
+      {
+        "date": "2025-10-25",
+        "type": "routine",
+        "outcome": "pass",
+        "violations": []
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0049",
+    "name": "Seaside Eatery [PlateCheck Demo]",
+    "address": {
+      "street": "300 S Atlantic Avenue, Apt 5",
+      "city": "Cocoa Beach",
+      "state": "FL",
+      "zip": "32931"
+    },
+    "phone": "(321) 555-4949",
+    "inspections": [
+      {
+        "date": "2025-08-05",
+        "type": "routine",
+        "outcome": "pass",
+        "violations": [
+          {
+            "code": "V-315",
+            "description": "Hand dryer or paper towels not available at handwash sink",
+            "severity": "basic",
+            "isRepeat": false
+          }
+        ]
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  },
+  {
+    "licenseId": "DEMO-FL-0050",
+    "name": "Tropic Thunder Smoothie Bar [PlateCheck Demo]",
+    "address": {
+      "street": "1250 International Drive",
+      "city": "Orlando",
+      "state": "FL",
+      "zip": "32819"
+    },
+    "phone": "(407) 555-5050",
+    "inspections": [
+      {
+        "date": "2025-12-22",
+        "type": "routine",
+        "outcome": "administrative",
+        "violations": []
+      }
+    ],
+    "provenance": {
+      "sourceKind": "demo",
+      "sourceLabel": "Demo data — official source not connected",
+      "sourceUrl": null,
+      "retrievedAt": "2026-01-15T00:00:00Z"
+    }
+  }
+]

@@ -1,0 +1,26 @@
+{
+  "name": "platecheck-fl",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite build --watch",
+    "build": "vite build",
+    "test": "vitest run",
+    "data:download": "tsx src/ingest/download.ts",
+    "data:ingest": "tsx src/ingest/ingest.ts",
+    "data:nyc": "tsx src/ingest/nyc-ingest.ts",
+    "lookup": "tsx src/lookup/cli.ts"
+  },
+  "devDependencies": {
+    "@crxjs/vite-plugin": "^2.0.0-beta.28",
+    "@types/chrome": "^0.0.287",
+    "@types/jsdom": "^28.0.3",
+    "csv-parse": "^7.0.0",
+    "jsdom": "^29.1.1",
+    "tsx": "^4.22.4",
+    "typescript": "^5.7.0",
+    "vite": "^5.4.0",
+    "vitest": "^2.1.0"
+  }
+}
