@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "PlateCheck",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Restaurant inspection information from official public records (Florida DBPR, NYC DOHMH), inline on Google Search results.",
   "icons": {
     "16": "icons/icon16.png",
