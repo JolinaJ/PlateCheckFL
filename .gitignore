@@ -5,3 +5,4 @@ dist/
 data/raw/
 data/processed/
 .claude/settings.local.json
+*.zip

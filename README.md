@@ -1,4 +1,4 @@
-# PlateCheck FL
+# PlateCheck
 
 A Chrome extension that displays restaurant inspection information from
 official public records, inline on Google Search result pages. Covers
