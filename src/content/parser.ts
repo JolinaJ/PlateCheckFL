@@ -14,14 +14,29 @@ const STREET_PATTERN = /^(\d+\s+[^,·]+)/;
 export interface RestaurantCandidate {
   query: RestaurantQuery;
   entry: Element;
+  // Where the candidate was found. "panel" means a single-business
+  // knowledge panel (searching or selecting one specific restaurant) —
+  // those get the prominent card variant.
+  context: "local" | "panel";
+  // How to place the card relative to `entry`. "after" (default) inserts
+  // it as the next sibling — used for list rows and panel wrappers.
+  // "before" inserts it as the previous sibling — used to drop the panel
+  // card as a full-width header row directly above the results column
+  // (#center_col), beneath Google's business panel.
+  placement?: "after" | "before";
 }
 
 // Returns each parsed restaurant query paired with the exact DOM element it
-// came from. Ads are filtered and duplicates are removed *before* pairing,
-// so callers can safely use the returned entry to inject UI without ever
-// recomputing a separate, differently-filtered list of entries — doing so
-// would silently desync indices (e.g. when a sponsored row precedes real
-// results) and attach cards to the wrong listing.
+// came from. Text ads are filtered and duplicates are removed *before*
+// pairing, so callers can safely use the returned entry to inject UI
+// without ever recomputing a separate, differently-filtered list of
+// entries — doing so would silently desync indices and attach cards to
+// the wrong listing.
+//
+// Sponsored local-pack rows are real business listings (name + address)
+// and are parsed like organic rows; when the same restaurant appears both
+// sponsored and organic, fingerprint dedupe keeps the first occurrence.
+// Pure text ads carry ad copy, not a business listing, and are skipped.
 export function parseRestaurantEntries(
   root: Document | Element
 ): RestaurantCandidate[] {
@@ -31,7 +46,7 @@ export function parseRestaurantEntries(
   try {
     const entries = findLocalResultEntries(root);
     for (const entry of entries) {
-      if (isAdOrSponsored(entry)) continue;
+      if (isTextAd(entry)) continue;
       const query = extractQuery(entry);
       if (!query) continue;
 
@@ -39,13 +54,110 @@ export function parseRestaurantEntries(
       if (seen.has(key)) continue;
       seen.add(key);
 
-      candidates.push({ query, entry });
+      candidates.push({ query, entry, context: "local", placement: "after" });
+    }
+
+    // Knowledge panel: searching one restaurant by name renders a
+    // full-page business panel instead of local-pack rows.
+    const kp = parseKnowledgePanel(root);
+    if (kp && !seen.has(queryFingerprint(kp.query))) {
+      seen.add(queryFingerprint(kp.query));
+      candidates.push(kp);
     }
   } catch {
     // Fail silently on unexpected DOM structures
   }
 
   return candidates;
+}
+
+// Knowledge-panel business results carry Google's structured data hooks
+// ([data-attrid]), which are far more stable than layout CSS classes.
+function parseKnowledgePanel(
+  root: Document | Element
+): RestaurantCandidate | null {
+  const titleEl = root.querySelector('[data-attrid="title"]');
+  const addrEl = root.querySelector(
+    '[data-attrid="kc:/location/location:address"], [data-attrid*="location:address"]'
+  );
+  if (!titleEl || !addrEl) return null;
+
+  const name = (titleEl.textContent ?? "").trim();
+  if (!name || name.length > 200) return null;
+
+  const addrText = (addrEl.textContent ?? "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^address:?\s*/i, "");
+  const address = parseAddressFields(addrText);
+  if (!address.street && !address.city) return null;
+
+  let phone: string | null = null;
+  const phoneEl = root.querySelector('[data-attrid*="phone"]');
+  if (phoneEl) phone = extractPhone(phoneEl.textContent ?? "");
+
+  const { entry, placement } = resolvePanelInjection(root, titleEl, addrEl);
+
+  return {
+    query: {
+      name,
+      ...(address.street && { street: address.street }),
+      ...(address.city && { city: address.city }),
+      ...(address.zip && { zip: address.zip }),
+      ...(phone && { phone }),
+    },
+    entry,
+    context: "panel",
+    placement,
+  };
+}
+
+// Top-level containers Google uses for the main results column. The panel
+// wrapper (and the organic results) are direct children of one of these.
+const RESULTS_COLUMN_IDS = ["rso", "center_col", "rcnt"];
+
+// Decides where the prominent panel card lands. Verified against live
+// Google DOM (2026-07-22) across the layouts Google serves for a
+// single-restaurant search:
+//
+//   Full-width business header, and right-hand-rail panel: Google's
+//   business panel (title + photos/map/hours/reviews, holding the address)
+//   occupies its own rows while the organic web results live in
+//   #center_col, which does NOT contain the address. #rcnt is a CSS grid;
+//   #center_col and #rhs are its bottom-row columns, and the panel media
+//   strip spans the full width above them. The card is inserted as #rcnt's
+//   child directly *before* #center_col so it becomes its own full-width
+//   row beneath the panel and above both result columns — reading as the
+//   panel's inspection footer, not a single-column search result. The
+//   injector spans it across the content columns to align it with the
+//   restaurant title. #rcnt/#center_col are stable top-level containers,
+//   so (unlike a deep panel module) Google's panel re-render can't displace
+//   the card to the bottom of the page.
+//
+//   Whole-page panel: the panel is itself inside #center_col, above the
+//   results, so #center_col contains the address. Inserting before it would
+//   put the card above the panel's own photos/title; instead the card
+//   injects after the panel wrapper — the ancestor of the title that is a
+//   direct child of the results column — landing between the panel and the
+//   results.
+function resolvePanelInjection(
+  root: Document | Element,
+  titleEl: Element,
+  addrEl: Element
+): { entry: Element; placement: "after" | "before" } {
+  const centerCol = root.querySelector("#center_col");
+  if (centerCol && centerCol.parentElement && !centerCol.contains(addrEl)) {
+    return { entry: centerCol, placement: "before" };
+  }
+
+  let wrapper: Element = titleEl;
+  while (
+    wrapper.parentElement &&
+    !RESULTS_COLUMN_IDS.includes(wrapper.parentElement.id)
+  ) {
+    wrapper = wrapper.parentElement;
+  }
+  return { entry: wrapper, placement: "after" };
 }
 
 export function parseRestaurantCandidates(
@@ -73,8 +185,8 @@ function findLocalResultEntries(root: Document | Element): Element[] {
   return results;
 }
 
-function isAdOrSponsored(entry: Element): boolean {
-  for (const selector of SELECTORS.adIndicators) {
+function isTextAd(entry: Element): boolean {
+  for (const selector of SELECTORS.textAdIndicators) {
     try {
       if (entry.matches(selector) || entry.querySelector(selector)) {
         return true;
@@ -85,17 +197,6 @@ function isAdOrSponsored(entry: Element): boolean {
     } catch {
       // Skip invalid selector
     }
-  }
-
-  // Google's sponsored local-pack rows render their text content with the
-  // "Sponsored" label immediately preceding the business name with no
-  // whitespace (e.g. "SponsoredLa Cubanita Restaurant..."). A simple
-  // prefix check is more reliable here than a word-boundary regex, since
-  // "Sponsored" and the following word are not separated by a boundary
-  // character in textContent.
-  const text = (entry.textContent ?? "").trim();
-  if (text.startsWith("Sponsored")) {
-    return true;
   }
 
   return false;
@@ -123,7 +224,15 @@ function extractName(entry: Element): string | null {
     try {
       const el = entry.querySelector(selector);
       if (el) {
-        const text = (el.textContent ?? "").trim();
+        let text = (el.textContent ?? "").trim();
+        // In sponsored rows Google renders a "Sponsored" label with no
+        // whitespace before the business name ("SponsoredLa Cubanita...").
+        // The verified markup keeps the label outside the name container,
+        // but if a fallback selector captures it, strip the prefix so the
+        // query holds only the business name.
+        if (text.startsWith("Sponsored")) {
+          text = text.slice("Sponsored".length).trim();
+        }
         if (text.length > 0 && text.length < 200) {
           return text;
         }

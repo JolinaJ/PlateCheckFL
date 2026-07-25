@@ -26,7 +26,10 @@ and NYC DOHMH (Department of Health and Mental Hygiene).
 - Cards inject directly below matching Google Search restaurant results.
 - No sidebar annotation.
 - Silent when no match found — no "no data found" UI in Milestone 1.
-- Visual direction: quiet, trustworthy, lightly branded, accessible.
+- Visual direction (amended 2026-07-20): prominent and clearly branded —
+  brand accent bar, logo, shadow, larger type — while remaining
+  trustworthy and accessible. Content stays factual and neutral;
+  prominence comes from visual weight, never from alarming language.
   Do not use color alone to communicate severity or confidence.
 - Conservative, explainable weighted matching — no opaque fuzzy-matching libraries.
 - Content script uses static declaration restricted to Google Search pages.
@@ -57,6 +60,37 @@ and NYC DOHMH (Department of Health and Mental Hygiene).
   DBPR-only. Queens results often carry neighborhood names (e.g.
   "Flushing") that don't match the borough — those match on street
   evidence and surface as "likely", by design.
+- Added 2026-07-22: sponsored local-pack rows (Google's "Sponsored"
+  business listings with a real name and address) receive cards exactly
+  like organic rows; the "Sponsored" label is stripped from extracted
+  names. Pure text ads (headline + display URL, no address) are still
+  skipped — ad copy is not a business listing.
+- Added 2026-07-22: single-restaurant knowledge panels (searching for or
+  selecting one specific restaurant) get a prominent card variant with
+  identical structure and behavior to the list card (collapsed by
+  default, same expandable sections), just larger. Visual weight only —
+  content and language are identical to the standard card. Placement
+  (verified against live Google DOM, resolvePanelInjection in
+  src/content/parser.ts): the card is inserted as a full-width row
+  directly *before* #center_col (a grid item in the #rcnt grid), spanning
+  the content columns (grid-column 2 / -2) so it aligns with the
+  restaurant title and sits beneath Google's panel media strip, above
+  both result columns — reading as the panel's inspection footer, not a
+  single-column search result. This applies whenever #center_col does not
+  itself contain the address (the full-width-header and right-rail
+  layouts). When the panel is inside #center_col (whole-page layout), the
+  card injects after the panel wrapper instead. Do NOT anchor to a deep
+  panel module: Google re-renders the knowledge panel after injection and
+  displaces any card anchored inside it to the bottom of the page (the bug
+  that made the panel card seem to disappear). #rcnt / #center_col are
+  stable top-level containers that survive the re-render. Note: Google
+  draws its own thin divider at the bottom of the panel media, so the card
+  sits just below that line as the panel footer; placing it above the line
+  requires injecting into the volatile media subtree, which the re-render
+  breaks. List-view cards are never
+  restyled by this; the prominent variant is exclusive to the panel
+  context. The panel card injects even when the same restaurant already
+  has a card in the local-pack list (dedupe is per-context).
 
 ## Tech stack
 

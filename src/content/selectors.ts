@@ -6,8 +6,9 @@
 // structure without notice — these will need maintenance.
 //
 // When selectors stop matching, the parser returns zero candidates (safe
-// failure). Do not broaden selectors to match organic results, ads, or
-// unrelated page elements.
+// failure). Do not broaden selectors to match organic web results, text
+// ads, or unrelated page elements. (Sponsored local-pack rows are in
+// scope — see below.)
 //
 // Verified structure for one local-pack row (generic query, e.g.
 // "cuban restaurants miami"):
@@ -26,9 +27,12 @@
 // by walking the direct-child <div> elements of .rllt__details and
 // skipping the name container, rather than by a CSS class selector.
 //
-// Sponsored/ad rows additionally carry the class "rllt__borderless" and
-// their text content begins immediately with "Sponsored" (no whitespace
-// before the business name, e.g. "SponsoredLa Cubanita Restaurant...").
+// Sponsored local-pack rows additionally carry the class
+// "rllt__borderless" and their text content begins immediately with
+// "Sponsored" (no whitespace before the business name, e.g.
+// "SponsoredLa Cubanita Restaurant..."). These are real business listings
+// with an address and are parsed like organic rows (decision 2026-07-22).
+// Pure text ads (headline + display URL, no address) are still skipped.
 //
 // [data-cid] is NOT a reliable entry selector on its own: on a
 // single-business knowledge panel (e.g. searching one restaurant's exact
@@ -70,13 +74,16 @@ export const SELECTORS = {
     ".lMbq3e",
   ],
 
-  // Sponsored/ad indicators — if any ancestor or the element itself
-  // matches these, skip it.
-  adIndicators: [
+  // Text-ad indicators — non-local ad units (headline + display URL,
+  // no business address). If any ancestor or the element itself matches
+  // these, skip it. Sponsored local-pack rows (.rllt__borderless) are
+  // deliberately NOT listed here — they get cards like organic rows.
+  // aria-label checks are exact matches: a substring match on "Ad" would
+  // also hit labels like "Address: ...".
+  textAdIndicators: [
     '[data-text-ad]',
-    '[aria-label*="Sponsored"]',
-    '[aria-label*="Ad"]',
-    ".rllt__borderless",
+    '[aria-label="Sponsored"]',
+    '[aria-label="Ad"]',
     ".uEierd",
     ".mnr-c",
     ".commercial-unit-desktop-top",

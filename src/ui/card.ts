@@ -3,11 +3,21 @@ import { generateSummary, formatDisposition } from "../summary/generator.js";
 import { fetchViolations, type ViolationDetail } from "./violation-fetcher.js";
 import { salienceScore } from "./violation-salience.js";
 import cardStyles from "./card.css?inline";
+// The PlateCheck mark. Imported so the build inlines it as a data URI
+// (icon48 is well under Vite's asset inline limit), keeping the card
+// self-contained — no web_accessible_resources entry and no network or
+// extension-URL fetch from the page.
+import logoUrl from "../../icons/icon48.png";
 
+// `prominent` renders the panel variant: identical structure and
+// behavior to the standard card (collapsed by default, same expandable
+// sections), just larger. Used when the user searched for or selected
+// one specific restaurant (knowledge panel) rather than browsing a list.
 export function createInspectionCard(
   facility: IndexedFacility,
   confidence: MatchConfidence,
-  coLocatedCount = 1
+  coLocatedCount = 1,
+  prominent = false
 ): HTMLElement {
   const host = document.createElement("div");
   host.className = "platecheck-host";
@@ -20,6 +30,7 @@ export function createInspectionCard(
   const card = document.createElement("div");
   card.className = "platecheck-card";
   card.dataset.expanded = "false";
+  card.dataset.variant = prominent ? "prominent" : "standard";
 
   const sourceUrl = buildSourceUrl(facility);
   card.innerHTML = buildCardHTML(facility, confidence, coLocatedCount, sourceUrl);
@@ -161,7 +172,7 @@ function buildCardHTML(
     <div class="platecheck-header" role="button" tabindex="0" aria-expanded="false" aria-label="Inspection info for ${escHtml(fac.n)}">
       <div class="platecheck-summary-line">
         <span class="platecheck-brand">
-          <span class="platecheck-brand-dot"></span>
+          <img class="platecheck-logo" src="${logoUrl}" alt="" aria-hidden="true">
           PlateCheck
         </span>
         <span class="platecheck-date">${escHtml(fac.d)}</span>
