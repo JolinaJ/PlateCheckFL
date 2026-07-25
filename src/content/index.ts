@@ -2,26 +2,68 @@ import { parseRestaurantEntries, queryFingerprint } from "./parser.js";
 import { matchFacility } from "../matching/dbpr-matcher.js";
 import { injectCard, isAlreadyInjected } from "./injector.js";
 import type { IndexedFacility, ParsedQuery } from "../types/extension.js";
-import dbprIndex from "../data/dbpr-index.json";
-import nycIndex from "../data/nyc-index.json";
+// Import as URLs, not values: this emits each index as a standalone
+// web-accessible asset instead of inlining ~26MB of records into the
+// content-script bundle that loads on every Google Search page. The data
+// is fetched lazily (see loadFacilities) only when a page actually has a
+// restaurant candidate to match.
+import dbprIndexUrl from "../data/dbpr-index.json?url";
+import nycIndexUrl from "../data/nyc-index.json?url";
 
-const facilities = (dbprIndex as IndexedFacility[]).concat(
-  nycIndex as IndexedFacility[]
-);
 const DEBOUNCE_MS = 300;
-const LOG_PREFIX = "PlateCheck FL:";
+const LOG_PREFIX = "PlateCheck:";
 
-console.log(`${LOG_PREFIX} content script active (${facilities.length} facilities loaded)`);
+let facilitiesPromise: Promise<IndexedFacility[]> | null = null;
+
+// Load and merge both jurisdiction indexes once, on first demand. The
+// promise is cached so concurrent MutationObserver bursts share a single
+// fetch; on failure it is cleared so a later page mutation can retry.
+function loadFacilities(): Promise<IndexedFacility[]> {
+  if (facilitiesPromise) return facilitiesPromise;
+  // ?url yields a root-relative path (/assets/…); in a content script that
+  // would resolve against the *page* origin (google.com), so route it
+  // through chrome.runtime.getURL to hit the extension origin instead.
+  facilitiesPromise = Promise.all([
+    fetch(chrome.runtime.getURL(dbprIndexUrl)).then((r) => r.json() as Promise<IndexedFacility[]>),
+    fetch(chrome.runtime.getURL(nycIndexUrl)).then((r) => r.json() as Promise<IndexedFacility[]>),
+  ])
+    .then(([dbpr, nyc]) => {
+      const facilities = dbpr.concat(nyc);
+      console.log(`${LOG_PREFIX} ${facilities.length} facilities loaded`);
+      return facilities;
+    })
+    .catch((e) => {
+      facilitiesPromise = null;
+      throw e;
+    });
+  return facilitiesPromise;
+}
+
+console.log(`${LOG_PREFIX} content script active`);
 
 const processedFingerprints = new Set<string>();
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-function runParsing(): void {
+async function runParsing(): Promise<void> {
   try {
     const candidates = parseRestaurantEntries(document);
 
-    for (const { query, entry } of candidates) {
-      const fp = queryFingerprint(query);
+    // The context is part of the fingerprint: clicking a restaurant in the
+    // local pack opens its panel, and the panel must still get its
+    // prominent card even though the same restaurant already received a
+    // card in the list.
+    const fresh = candidates.filter(
+      (c) => !processedFingerprints.has(`${queryFingerprint(c.query)}|${c.context}`)
+    );
+
+    // Nothing new to match — don't touch the 26MB indexes. Most Google
+    // searches never reach this point, so the data is never loaded.
+    if (fresh.length === 0) return;
+
+    const facilities = await loadFacilities();
+
+    for (const { query, entry, context, placement } of fresh) {
+      const fp = `${queryFingerprint(query)}|${context}`;
       if (processedFingerprints.has(fp)) continue;
       processedFingerprints.add(fp);
 
@@ -40,7 +82,14 @@ function runParsing(): void {
         (result.confidence === "confirmed" || result.confidence === "likely")
       ) {
         if (!isAlreadyInjected(entry)) {
-          injectCard(entry, result.facility, result.confidence, result.coLocatedCount);
+          injectCard(
+            entry,
+            result.facility,
+            result.confidence,
+            result.coLocatedCount,
+            context === "panel",
+            placement
+          );
         }
 
         const flags = [
