@@ -28,10 +28,90 @@ const MAX_CANDIDATES = 3;
 // scoring poorly due to an extra token.
 const BUSINESS_TYPE_SUFFIXES = /\b(restaurant|rest|ristorante|cafe|café|caffe|diner|grill|grille|grillhouse|bar|pub|tavern|lounge|kitchen|eatery|bistro|brasserie|trattoria|pizzeria|bakery|steakhouse|seafood|sushi|bbq|barbecue|taqueria|cantina|brewery|taphouse|deli|delicatessen|creamery|gelateria|food|foods|market|shoppe|shop|house|palace|express|station|shack|hut|joint|pit|spot|den|corner|place|room|landing|inn|hotel|motel|resort|club|corporation|corp|enterprises|enterprise|group|holdings|of|the|and|a|an|no|inc|llc|ltd|co)\b\.?/gi;
 
+// An inverted index from normalized name token -> the positions (in the
+// original facilities array) of every facility whose name contains that
+// token. Built once and reused across every query on a page, it lets a
+// query score only the facilities that share a name token instead of
+// linearly scanning all ~95K records.
+//
+// The token index is built eagerly (it's what makes blocking possible).
+// The two costlier normalizations — business-suffix stripping (`names[i]`'s
+// sdt) and street parsing (`streets[i]`) — are filled lazily and cached the
+// first time a facility is actually scored. The overwhelming majority of
+// records are never a candidate for any query on a page, so eagerly
+// normalizing all of them just to build the index wastes seconds of the
+// first card's latency for work that's thrown away.
+export interface MatchIndex {
+  facilities: IndexedFacility[];
+  byToken: Map<string, number[]>;
+  names: NamePrep[];
+  streets: Array<StreetParts | null>;
+}
+
+// Build the token index. Per facility this does only the cheap half of
+// normalization (lowercasing/tokenizing the name); the expensive suffix
+// strip and street parse are deferred to scoring time (see sdtOf and the
+// street cache in matchFacility). Facilities are pushed in ascending array
+// order, so every bucket stays sorted by original position.
+export function buildMatchIndex(facilities: IndexedFacility[]): MatchIndex {
+  const byToken = new Map<string, number[]>();
+  const names: NamePrep[] = new Array(facilities.length);
+  const streets: Array<StreetParts | null> = new Array(facilities.length).fill(null);
+  for (let i = 0; i < facilities.length; i++) {
+    const name = prepareName(facilities[i].n);
+    names[i] = name;
+    const seen = new Set<string>();
+    for (const tok of name.td) {
+      if (seen.has(tok)) continue;
+      seen.add(tok);
+      const bucket = byToken.get(tok);
+      if (bucket) bucket.push(i);
+      else byToken.set(tok, [i]);
+    }
+  }
+  return { facilities, byToken, names, streets };
+}
+
+// The set of facility positions worth scoring for this query: any facility
+// that shares at least one name token with the query. The variant lookups
+// (plural/singular of each query token) mirror containmentWithPlural
+// exactly, so this set is a provable superset of every facility that could
+// score above 0 in the name similarity — dropping the rest changes nothing
+// but the work done. Returned ascending so the scored order matches what a
+// full linear scan would produce, keeping results identical.
+function candidateIndices(queryName: NamePrep, index: MatchIndex): number[] {
+  if (queryName.td.length === 0) return [];
+
+  const lookups = new Set<string>();
+  for (const t of queryName.td) {
+    lookups.add(t);
+    lookups.add(t + "s");
+    lookups.add(t + "es");
+    if (t.endsWith("es") && t.length > 2) lookups.add(t.slice(0, -2));
+    if (t.endsWith("s") && t.length > 1) lookups.add(t.slice(0, -1));
+  }
+
+  const seen = new Set<number>();
+  for (const key of lookups) {
+    const bucket = index.byToken.get(key);
+    if (bucket) for (const i of bucket) seen.add(i);
+  }
+  return [...seen].sort((a, b) => a - b);
+}
+
 export function matchFacility(
   query: ParsedQuery,
-  facilities: IndexedFacility[]
+  source: IndexedFacility[] | MatchIndex
 ): ExtensionMatchResult {
+  // Accept either the raw facilities array (used by tests and one-off
+  // lookups) or a prebuilt index (used by the content script, which builds
+  // it once and reuses it across every query on the page).
+  const index = Array.isArray(source) ? buildMatchIndex(source) : source;
+
+  // Normalize the query's name and street once per query, not per candidate.
+  const queryName = prepareName(query.name);
+  const queryStreet = query.street ? parseStreetParts(query.street) : null;
+
   const scored: Array<{
     facility: IndexedFacility;
     score: number;
@@ -40,8 +120,9 @@ export function matchFacility(
     streetNameMismatch: boolean;
   }> = [];
 
-  for (const fac of facilities) {
-    const nSim = dbprNameSimilarity(query.name, fac.n);
+  for (const i of candidateIndices(queryName, index)) {
+    const fac = index.facilities[i];
+    const nSim = nameSimilarityPrepared(queryName, index.names[i]);
     if (nSim < NAME_FLOOR) continue;
 
     let score = 0;
@@ -50,8 +131,16 @@ export function matchFacility(
     let hasStreetEvidence = false;
     let suiteMismatch = false;
     let streetNameMismatch = false;
-    if (query.street) {
-      const street = streetMatch(query.street, fac.a);
+    if (queryStreet) {
+      // Parse the facility's street on first use and cache it — only
+      // candidates that reach this point (already past the name floor) ever
+      // need it, so this stays off the index-build critical path.
+      let facStreet = index.streets[i];
+      if (facStreet === null) {
+        facStreet = parseStreetParts(fac.a);
+        index.streets[i] = facStreet;
+      }
+      const street = streetMatchParts(queryStreet, facStreet);
       suiteMismatch = street.suiteMismatch;
       score += street.similarity >= STREET_STRONG ? WEIGHT_STREET : WEIGHT_STREET * (street.similarity / STREET_STRONG);
       // A suite/unit mismatch means this is likely a different tenant in
@@ -68,7 +157,7 @@ export function matchFacility(
       // strong, distinctive match, treat that as corroborating evidence
       // even though the street name text itself doesn't agree.
       if (!hasStreetEvidence && !suiteMismatch) {
-        const qNum = leadingStreetNumber(query.street);
+        const qNum = leadingStreetNumber(query.street ?? "");
         const fNum = leadingStreetNumber(fac.a);
         if (qNum && fNum && qNum === fNum && nSim >= NAME_STRONG) {
           streetNameMismatch = true;
@@ -240,29 +329,45 @@ function containment(queryTokens: string[], facilityTokens: string[]): number {
   return matched / queryTokens.length;
 }
 
-export function dbprNameSimilarity(query: string, dbprName: string): number {
-  const nq = normalizeForComparison(query);
-  const nd = normalizeForComparison(dbprName);
-  if (nq === nd) return 1.0;
+// A name normalized into the token forms the similarity function needs.
+// `nd`/`td` are computed eagerly (needed to build the token index); `sdt`
+// (business-suffix-stripped tokens) is filled lazily by sdtOf the first
+// time this name is scored, since the strip regex is expensive and most
+// indexed facilities are never scored.
+interface NamePrep {
+  nd: string;             // fully normalized name string
+  td: string[];           // its tokens
+  sdt: string[] | null;   // tokens after stripping business-type suffixes (lazy)
+}
 
-  const tq = tokenize(nq);
-  const td = tokenize(nd);
+function prepareName(s: string): NamePrep {
+  const nd = normalizeForComparison(s);
+  return { nd, td: tokenize(nd), sdt: null };
+}
+
+function sdtOf(p: NamePrep): string[] {
+  if (p.sdt === null) p.sdt = tokenize(stripBusinessType(p.nd));
+  return p.sdt;
+}
+
+function nameSimilarityPrepared(q: NamePrep, d: NamePrep): number {
+  if (q.nd === d.nd) return 1.0;
 
   // Plain Jaccard
-  const jSim = jaccard(tq, td);
+  const jSim = jaccard(q.td, d.td);
 
   // Jaccard after stripping business-type suffixes from both
-  const sqt = tokenize(stripBusinessType(nq));
-  const sdt = tokenize(stripBusinessType(nd));
-  const strippedJaccard = sqt.length > 0 && sdt.length > 0
-    ? jaccard(sqt, sdt)
+  const qsdt = sdtOf(q);
+  const dsdt = sdtOf(d);
+  const strippedJaccard = qsdt.length > 0 && dsdt.length > 0
+    ? jaccard(qsdt, dsdt)
     : jSim;
 
   // Containment: are all query tokens present in the DBPR name?
-  const cont = containment(tq, td);
+  const cont = containment(q.td, d.td);
 
   // Pluralization: try matching singular/plural forms
-  const pluralCont = containmentWithPlural(tq, td);
+  const pluralCont = containmentWithPlural(q.td, d.td);
 
   // DBPR names are frequently terse/legal versions of a longer marketing
   // name shown on Google (e.g. DBPR "VERSAILLES REST" vs Google's
@@ -271,7 +376,7 @@ export function dbprNameSimilarity(query: string, dbprName: string): number {
   // entire core identity is present in the query. If every business-type-
   // stripped DBPR token appears in the query, treat that as strong
   // evidence regardless of how many extra words the query has.
-  const facilityCoreInQuery = sdt.length > 0 ? containment(sdt, tq) : 0;
+  const facilityCoreInQuery = dsdt.length > 0 ? containment(dsdt, q.td) : 0;
 
   return Math.max(
     jSim,
@@ -280,6 +385,10 @@ export function dbprNameSimilarity(query: string, dbprName: string): number {
     pluralCont * 0.88,
     facilityCoreInQuery * 0.85
   );
+}
+
+export function dbprNameSimilarity(query: string, dbprName: string): number {
+  return nameSimilarityPrepared(prepareName(query), prepareName(dbprName));
 }
 
 function containmentWithPlural(
@@ -376,10 +485,7 @@ interface StreetMatchResult {
   suiteMismatch: boolean;
 }
 
-function streetMatch(a: string, b: string): StreetMatchResult {
-  const pa = parseStreetParts(a);
-  const pb = parseStreetParts(b);
-
+function streetMatchParts(pa: StreetParts, pb: StreetParts): StreetMatchResult {
   const similarity =
     pa.base === pb.base
       ? 1.0
@@ -389,6 +495,10 @@ function streetMatch(a: string, b: string): StreetMatchResult {
     pa.suite !== null && pb.suite !== null && pa.suite !== pb.suite;
 
   return { similarity, suiteMismatch };
+}
+
+function streetMatch(a: string, b: string): StreetMatchResult {
+  return streetMatchParts(parseStreetParts(a), parseStreetParts(b));
 }
 
 function normalizeCity(s: string): string {

@@ -1,5 +1,6 @@
 import { parseRestaurantEntries, queryFingerprint } from "./parser.js";
-import { matchFacility } from "../matching/dbpr-matcher.js";
+import { matchFacility, buildMatchIndex } from "../matching/dbpr-matcher.js";
+import type { MatchIndex } from "../matching/dbpr-matcher.js";
 import { injectCard, isAlreadyInjected } from "./injector.js";
 import type { IndexedFacility, ParsedQuery } from "../types/extension.js";
 // Import as URLs, not values: this emits each index as a standalone
@@ -13,30 +14,32 @@ import nycIndexUrl from "../data/nyc-index.json?url";
 const DEBOUNCE_MS = 300;
 const LOG_PREFIX = "PlateCheck:";
 
-let facilitiesPromise: Promise<IndexedFacility[]> | null = null;
+let indexPromise: Promise<MatchIndex> | null = null;
 
-// Load and merge both jurisdiction indexes once, on first demand. The
-// promise is cached so concurrent MutationObserver bursts share a single
-// fetch; on failure it is cleared so a later page mutation can retry.
-function loadFacilities(): Promise<IndexedFacility[]> {
-  if (facilitiesPromise) return facilitiesPromise;
+// Load and merge both jurisdiction indexes once, on first demand, and
+// build the token index that makes each query cheap. The promise is cached
+// so concurrent MutationObserver bursts share a single load; on failure it
+// is cleared so a later page mutation can retry.
+function loadIndex(): Promise<MatchIndex> {
+  if (indexPromise) return indexPromise;
   // ?url yields a root-relative path (/assets/…); in a content script that
   // would resolve against the *page* origin (google.com), so route it
   // through chrome.runtime.getURL to hit the extension origin instead.
-  facilitiesPromise = Promise.all([
+  indexPromise = Promise.all([
     fetch(chrome.runtime.getURL(dbprIndexUrl)).then((r) => r.json() as Promise<IndexedFacility[]>),
     fetch(chrome.runtime.getURL(nycIndexUrl)).then((r) => r.json() as Promise<IndexedFacility[]>),
   ])
     .then(([dbpr, nyc]) => {
       const facilities = dbpr.concat(nyc);
+      const index = buildMatchIndex(facilities);
       console.log(`${LOG_PREFIX} ${facilities.length} facilities loaded`);
-      return facilities;
+      return index;
     })
     .catch((e) => {
-      facilitiesPromise = null;
+      indexPromise = null;
       throw e;
     });
-  return facilitiesPromise;
+  return indexPromise;
 }
 
 console.log(`${LOG_PREFIX} content script active`);
@@ -60,7 +63,7 @@ async function runParsing(): Promise<void> {
     // searches never reach this point, so the data is never loaded.
     if (fresh.length === 0) return;
 
-    const facilities = await loadFacilities();
+    const index = await loadIndex();
 
     for (const { query, entry, context, placement } of fresh) {
       const fp = `${queryFingerprint(query)}|${context}`;
@@ -75,7 +78,7 @@ async function runParsing(): Promise<void> {
         phone: query.phone,
       };
 
-      const result = matchFacility(matchQuery, facilities);
+      const result = matchFacility(matchQuery, index);
 
       if (
         result.facility &&
