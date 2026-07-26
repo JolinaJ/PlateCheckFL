@@ -10,6 +10,7 @@
     "data:download": "tsx src/ingest/download.ts",
     "data:ingest": "tsx src/ingest/ingest.ts",
     "data:nyc": "tsx src/ingest/nyc-ingest.ts",
+    "data:columbus": "tsx src/ingest/columbus-ingest.ts",
     "lookup": "tsx src/lookup/cli.ts"
   },
   "devDependencies": {
