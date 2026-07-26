@@ -24,6 +24,7 @@
   },
   "permissions": [],
   "host_permissions": [
-    "https://www.myfloridalicense.com/*"
+    "https://www.myfloridalicense.com/*",
+    "https://pressagent.envisionconnect.com/*"
   ]
 }

@@ -10,6 +10,7 @@ import type { IndexedFacility, ParsedQuery } from "../types/extension.js";
 // restaurant candidate to match.
 import dbprIndexUrl from "../data/dbpr-index.json?url";
 import nycIndexUrl from "../data/nyc-index.json?url";
+import columbusIndexUrl from "../data/columbus-index.json?url";
 
 const DEBOUNCE_MS = 300;
 const LOG_PREFIX = "PlateCheck:";
@@ -28,9 +29,10 @@ function loadIndex(): Promise<MatchIndex> {
   indexPromise = Promise.all([
     fetch(chrome.runtime.getURL(dbprIndexUrl)).then((r) => r.json() as Promise<IndexedFacility[]>),
     fetch(chrome.runtime.getURL(nycIndexUrl)).then((r) => r.json() as Promise<IndexedFacility[]>),
+    fetch(chrome.runtime.getURL(columbusIndexUrl)).then((r) => r.json() as Promise<IndexedFacility[]>),
   ])
-    .then(([dbpr, nyc]) => {
-      const facilities = dbpr.concat(nyc);
+    .then(([dbpr, nyc, columbus]) => {
+      const facilities = dbpr.concat(nyc, columbus);
       const index = buildMatchIndex(facilities);
       console.log(`${LOG_PREFIX} ${facilities.length} facilities loaded`);
       return index;

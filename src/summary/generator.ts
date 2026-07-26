@@ -3,6 +3,14 @@ import type { IndexedFacility } from "../types/extension.js";
 export function generateSummary(fac: IndexedFacility): string {
   const parts: string[] = [];
 
+  // Columbus carries no bundled inspection date or counts — the latest
+  // inspection is fetched on demand — so summarize the current permit status
+  // instead and point to the expandable detail.
+  if (fac.j === "columbus") {
+    const status = fac.di || "not listed";
+    return `Columbus Public Health lists this facility's current permit status as "${status}". Expand the latest inspection to load its date and any critical violations from the official record.`;
+  }
+
   if (!fac.d) return "No inspection data available in the current dataset.";
 
   const disposition = fac.di || "Unknown";

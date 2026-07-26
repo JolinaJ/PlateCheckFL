@@ -1,13 +1,20 @@
-// Fetch proxy for lazy, user-initiated DBPR detail lookups.
+// Fetch proxy for lazy, user-initiated official-record detail lookups.
 //
 // MV3 content scripts are subject to the host page's CORS policy, and
-// myfloridalicense.com sends no CORS headers — so the fetch must happen
-// here, in an extension context, where host_permissions apply.
+// neither myfloridalicense.com (DBPR) nor pressagent.envisionconnect.com
+// (Columbus Public Health) sends CORS headers — so the fetch must happen
+// here, in an extension context, where host_permissions apply. (NYC's
+// Socrata API does send CORS headers and is fetched directly from the
+// content script, so it never reaches this worker.)
 //
-// This worker must never do anything besides proxying these fetches:
-// no state, no analytics, no other network access.
+// This worker must never do anything besides proxying these fetches to the
+// allow-listed official sources: no state, no analytics, no other network
+// access.
 
-const ALLOWED_PREFIX = "https://www.myfloridalicense.com/";
+const ALLOWED_PREFIXES = [
+  "https://www.myfloridalicense.com/",
+  "https://pressagent.envisionconnect.com/",
+];
 
 interface FetchRequest {
   type: "platecheck:fetch";
@@ -19,7 +26,7 @@ chrome.runtime.onMessage.addListener(
     if (message?.type !== "platecheck:fetch") return;
 
     const url = String(message.url ?? "");
-    if (!url.startsWith(ALLOWED_PREFIX)) {
+    if (!ALLOWED_PREFIXES.some((prefix) => url.startsWith(prefix))) {
       sendResponse({ ok: false, error: "URL not allowed" });
       return;
     }

@@ -85,6 +85,112 @@ function mmDdYyyyToIso(d: string): string {
   return `${y}-${m}-${day}T00:00:00.000`;
 }
 
+// --- Columbus (Ohio) on-demand inspection detail ---
+
+// Columbus publishes no inspection date or violations in its bulk ArcGIS
+// feed, so — unlike FL/NYC where the latest inspection is bundled — the
+// latest inspection date is discovered here alongside the violations.
+export interface ColumbusInspection {
+  date: string; // MM/DD/YYYY of the latest inspection
+  type: string; // e.g. "INSPECTION - STANDARD / CCP"
+  violations: ViolationDetail[]; // critical violations cited at that inspection
+}
+
+const columbusCache = new Map<string, ColumbusInspection | null>();
+
+export function buildColumbusDetailUrl(fac: IndexedFacility): string | null {
+  if (!fac.vid) return null;
+  return `https://pressagent.envisionconnect.com/fac.phtml?agency=COL&forceresults=1&facid=${encodeURIComponent(fac.vid)}`;
+}
+
+// Columbus Public Health's EnvisionConnect portal sends no CORS headers, so
+// (like DBPR) the fetch is proxied through the background service worker.
+export async function fetchColumbusInspection(
+  fac: IndexedFacility
+): Promise<ColumbusInspection | null> {
+  const url = buildColumbusDetailUrl(fac);
+  if (!url) return null;
+  if (columbusCache.has(url)) return columbusCache.get(url)!;
+
+  const res = (await chrome.runtime.sendMessage({
+    type: "platecheck:fetch",
+    url,
+  })) as FetchResponse | undefined;
+
+  if (!res?.ok || typeof res.html !== "string") {
+    throw new Error(res?.error ?? "No response from service worker");
+  }
+
+  const parsed = parseColumbusInspectionFromHtml(res.html);
+  columbusCache.set(url, parsed);
+  return parsed;
+}
+
+// The facility page lists inspections newest-first. Each is a table row with
+// a date cell and a link that toggles a <span id="…"> holding that
+// inspection's critical-violation <li> items. We take the first (latest).
+// Exported for unit testing.
+export function parseColumbusInspectionFromHtml(html: string): ColumbusInspection | null {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+
+  for (const link of Array.from(doc.querySelectorAll('a[href*="toggleVisibility"]'))) {
+    const m = /toggleVisibility\(['"]([^'"]+)['"]\)/.exec(link.getAttribute("href") ?? "");
+    if (!m) continue;
+
+    const row = link.closest("tr");
+    const dateText = row?.querySelector("td")?.textContent?.trim() ?? "";
+    const date = /^\d{2}\/\d{2}\/\d{4}$/.test(dateText) ? dateText : "";
+    const type = (link.textContent ?? "").replace(/\s+/g, " ").trim();
+
+    const span = doc.getElementById(m[1]);
+    const violations = span ? parseColumbusViolations(span) : [];
+    return { date, type, violations };
+  }
+  return null;
+}
+
+function parseColumbusViolations(span: Element): ViolationDetail[] {
+  const out: ViolationDetail[] = [];
+  for (const li of Array.from(span.querySelectorAll("li"))) {
+    // Every real violation item leads with an Ohio food-code citation
+    // (3717-1-…). Items without one are not violations (e.g. the
+    // JS-injected "No critical violations cited" note).
+    const codeMatch = /3717-1[-\d.\w()]*/.exec(li.textContent ?? "");
+    if (!codeMatch) continue;
+    const code = codeMatch[0];
+
+    // The description is the "Violation:" paragraph; Correction/Comments/
+    // status paragraphs are ignored.
+    let description = "";
+    for (const p of Array.from(li.querySelectorAll("p"))) {
+      const t = (p.textContent ?? "").replace(/\s+/g, " ").trim();
+      if (/^violation:/i.test(t)) {
+        description = t.replace(/^violation:\s*/i, "").trim();
+        break;
+      }
+    }
+    if (!description) {
+      description = (li.textContent ?? "").replace(code, "").replace(/\s+/g, " ").trim();
+    }
+
+    // The portal renders critical violations in red; Ohio's other tier is
+    // "not critical". Classify by color, mapping onto the shared severity
+    // buckets (critical -> high, not critical -> basic), as NYC does.
+    const style = (li.getAttribute("style") ?? "").toLowerCase();
+    const critical = style.includes("#ff0000") || style.includes("rgb(255, 0, 0)");
+
+    out.push({
+      code,
+      description,
+      priority: critical ? "high" : "basic",
+      // The portal exposes no structured corrected/repeat flags.
+      correctedOnSite: false,
+      isRepeat: false,
+    });
+  }
+  return out;
+}
+
 // Exported for unit testing.
 export function parseViolationsFromHtml(html: string): ViolationDetail[] {
   const doc = new DOMParser().parseFromString(html, "text/html");

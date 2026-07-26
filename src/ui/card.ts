@@ -1,6 +1,11 @@
 import type { IndexedFacility, MatchConfidence } from "../types/extension.js";
 import { generateSummary, formatDisposition } from "../summary/generator.js";
-import { fetchViolations, type ViolationDetail } from "./violation-fetcher.js";
+import {
+  fetchViolations,
+  fetchColumbusInspection,
+  type ViolationDetail,
+  type ColumbusInspection,
+} from "./violation-fetcher.js";
 import { salienceScore } from "./violation-salience.js";
 import cardStyles from "./card.css?inline";
 // The PlateCheck mark. Imported so the build inlines it as a data URI
@@ -52,11 +57,113 @@ export function createInspectionCard(
   });
 
   const total = facility.hp + facility.im + facility.ba;
-  if (total > 0) {
+  if (facility.j === "columbus") {
+    // Columbus bundles no counts; the latest inspection + violations are
+    // always fetched on demand, so the section is wired unconditionally.
+    wireColumbusInspection(card, facility, sourceUrl);
+  } else if (total > 0) {
     wireViolationsToggle(card, facility, sourceUrl, total);
   }
 
   return host;
+}
+
+// Columbus: on first expand, fetch the facility's EnvisionConnect record,
+// then render its latest inspection date + critical violations and surface
+// the discovered date in the header and detail grid (both blank until now).
+function wireColumbusInspection(
+  card: Element,
+  fac: IndexedFacility,
+  url: string
+): void {
+  const toggle = card.querySelector(
+    ".platecheck-violations-toggle"
+  ) as HTMLButtonElement | null;
+  const list = card.querySelector(
+    ".platecheck-violations-list"
+  ) as HTMLElement | null;
+  if (!toggle || !list) return;
+
+  let fetched = false;
+
+  toggle.addEventListener("click", async (e) => {
+    e.stopPropagation();
+    const expanded = toggle.getAttribute("aria-expanded") === "true";
+
+    if (!expanded) {
+      toggle.setAttribute("aria-expanded", "true");
+      toggle.innerHTML = `Hide latest inspection ▴`;
+      list.hidden = false;
+
+      if (!fetched) {
+        fetched = true;
+        list.innerHTML = `<span class="platecheck-viol-loading">Loading…</span>`;
+        try {
+          const insp = await fetchColumbusInspection(fac);
+          list.innerHTML = renderColumbusInspection(insp, url);
+          if (insp?.date) {
+            const dateEl = card.querySelector(".platecheck-date");
+            if (dateEl) dateEl.textContent = insp.date;
+            const inspEl = card.querySelector(".platecheck-inspection-value");
+            if (inspEl) {
+              inspEl.textContent = insp.type
+                ? `${insp.type} — ${insp.date}`
+                : insp.date;
+            }
+          }
+        } catch {
+          list.innerHTML = `<span class="platecheck-viol-error">Could not load inspection. <a class="platecheck-source-link" href="${escHtml(url)}" target="_blank" rel="noopener">View on Columbus Public Health</a></span>`;
+        }
+      }
+    } else {
+      toggle.setAttribute("aria-expanded", "false");
+      toggle.innerHTML = `Show latest inspection ▾`;
+      list.hidden = true;
+    }
+  });
+}
+
+function renderColumbusInspection(
+  insp: ColumbusInspection | null,
+  url: string
+): string {
+  if (!insp) {
+    return `<p class="platecheck-viol-empty">No inspection records found. <a class="platecheck-source-link" href="${escHtml(url)}" target="_blank" rel="noopener">View on Columbus Public Health</a></p>`;
+  }
+
+  const header = `<p class="platecheck-viol-empty">Latest inspection: ${escHtml(insp.date)}${insp.type ? " — " + escHtml(insp.type) : ""}.</p>`;
+
+  // The portal details critical violations; Ohio's other tier is "not
+  // critical". Report using that official vocabulary.
+  const critical = insp.violations.filter((v) => v.priority === "high");
+  if (critical.length === 0) {
+    return (
+      header +
+      `<p class="platecheck-viol-empty">No critical violations cited at this inspection.</p>`
+    );
+  }
+
+  const items = critical
+    .sort((a, b) => salienceScore(b.description) - salienceScore(a.description))
+    .map(
+      (v) => `
+      <div class="platecheck-viol-item">
+        <div class="platecheck-viol-item-top">
+          <span class="platecheck-viol-code">${escHtml(v.code)}</span>
+        </div>
+        <div class="platecheck-viol-desc">${escHtml(v.description)}</div>
+      </div>`
+    )
+    .join("");
+
+  return (
+    header +
+    `
+    <div class="platecheck-viol-group" data-priority="high">
+      <div class="platecheck-viol-group-header">Critical violations</div>
+      ${items}
+    </div>`
+  );
 }
 
 function wireViolationsToggle(
@@ -163,10 +270,13 @@ function buildCardHTML(
   sourceUrl: string
 ): string {
   const nyc = fac.j === "nyc";
+  const columbus = fac.j === "columbus";
   const disposition = formatDisposition(fac.di);
   const total = fac.hp + fac.im + fac.ba;
   const summary = generateSummary(fac);
   const confidenceLabel = confidence === "confirmed" ? "Matched" : "Partial match";
+
+  const idLabel = columbus ? "Facility ID" : nyc ? "CAMIS" : "License";
 
   return `
     <div class="platecheck-header" role="button" tabindex="0" aria-expanded="false" aria-label="Inspection info for ${escHtml(fac.n)}">
@@ -178,7 +288,7 @@ function buildCardHTML(
         <span class="platecheck-date">${escHtml(fac.d)}</span>
         <span class="platecheck-disposition">${escHtml(disposition)}</span>
         ${buildGradeBadge(fac)}
-        ${buildViolationBadges(fac, total)}
+        ${columbus ? "" : buildViolationBadges(fac, total)}
       </div>
       <span class="platecheck-confidence" data-level="${confidence}">${escHtml(confidenceLabel)}</span>
       <span class="platecheck-expand-icon" aria-hidden="true">▾</span>
@@ -187,20 +297,23 @@ function buildCardHTML(
       <div class="platecheck-detail-grid">
         <span class="platecheck-detail-label">Business</span>
         <span class="platecheck-detail-value">${escHtml(fac.n)}</span>
-        <span class="platecheck-detail-label">${nyc ? "CAMIS" : "License"}</span>
+        <span class="platecheck-detail-label">${idLabel}</span>
         <span class="platecheck-detail-value">${escHtml(fac.ln)}</span>
         <span class="platecheck-detail-label">Address</span>
         <span class="platecheck-detail-value">${escHtml(fac.a)}, ${escHtml(fac.c)} ${escHtml(fac.z)}</span>
+        ${columbus ? "" : `
         <span class="platecheck-detail-label">${nyc ? "Borough" : "County"}</span>
         <span class="platecheck-detail-value">${escHtml(fac.co)}</span>
+        `}
         <span class="platecheck-detail-label">Inspection</span>
-        <span class="platecheck-detail-value">${escHtml(fac.t)} — ${escHtml(fac.d)}</span>
-        <span class="platecheck-detail-label">${nyc ? "Action" : "Disposition"}</span>
-        <span class="platecheck-detail-value">${escHtml(fac.di)}</span>
+        <span class="platecheck-detail-value platecheck-inspection-value">${columbus ? "Expand to load the latest inspection" : `${escHtml(fac.t)} — ${escHtml(fac.d)}`}</span>
+        <span class="platecheck-detail-label">${columbus ? "Status" : nyc ? "Action" : "Disposition"}</span>
+        <span class="platecheck-detail-value">${escHtml(fac.di)}${columbus ? " (Columbus Public Health)" : ""}</span>
         ${nyc && (fac.g === "A" || fac.g === "B" || fac.g === "C") ? `
         <span class="platecheck-detail-label">Posted grade</span>
         <span class="platecheck-detail-value">${escHtml(fac.g)} (posted by NYC DOHMH)</span>
         ` : ""}
+        ${columbus ? "" : `
         <span class="platecheck-detail-label">${nyc ? "Critical" : "High priority"}</span>
         <span class="platecheck-detail-value">${fac.hp}</span>
         ${nyc ? "" : `
@@ -209,16 +322,17 @@ function buildCardHTML(
         `}
         <span class="platecheck-detail-label">${nyc ? "Not critical" : "Basic"}</span>
         <span class="platecheck-detail-value">${fac.ba}</span>
+        `}
         ${fac.ic > 1 ? `
         <span class="platecheck-detail-label">Inspections</span>
         <span class="platecheck-detail-value">${fac.ic} ${nyc ? "on record" : "in current fiscal year"}</span>
         ` : ""}
       </div>
       <div class="platecheck-summary-text">${escHtml(summary)}</div>
-      ${total > 0 ? `
+      ${total > 0 || columbus ? `
       <div class="platecheck-violations-section">
         <button class="platecheck-violations-toggle" aria-expanded="false">
-          Show violations (${total}) ▾
+          ${columbus ? "Show latest inspection ▾" : `Show violations (${total}) ▾`}
         </button>
         <div class="platecheck-violations-list" hidden></div>
       </div>
@@ -229,7 +343,11 @@ function buildCardHTML(
       </div>
       ` : ""}
       <div class="platecheck-disclaimer">
-        ${nyc ? `
+        ${columbus ? `
+        Columbus Public Health inspection records are historical snapshots
+        reflecting conditions observed on the date of inspection.
+        Establishments are not graded or rated.
+        ` : nyc ? `
         NYC DOHMH inspection records are historical snapshots reflecting
         conditions observed on the date of inspection. Letter grades shown
         are posted by NYC DOHMH.
@@ -240,7 +358,7 @@ function buildCardHTML(
         <br>
         <a class="platecheck-source-link" href="${escHtml(sourceUrl)}"
            target="_blank" rel="noopener">
-          ${nyc ? "View official NYC inspection results (ABC Eats)" : "View official DBPR inspection record"}
+          ${columbus ? "View official Columbus Public Health inspection record" : nyc ? "View official NYC inspection results (ABC Eats)" : "View official DBPR inspection record"}
         </a>
       </div>
     </div>
@@ -248,6 +366,11 @@ function buildCardHTML(
 }
 
 export function buildSourceUrl(fac: IndexedFacility): string {
+  if (fac.j === "columbus") {
+    return fac.vid
+      ? `https://pressagent.envisionconnect.com/fac.phtml?agency=COL&forceresults=1&facid=${encodeURIComponent(fac.vid)}`
+      : "https://pressagent.envisionconnect.com/main.phtml?agency=COL";
+  }
   if (fac.j === "nyc") {
     // ABC Eats has no stable per-restaurant URL; link its official search.
     return "https://a816-health.nyc.gov/ABCEatsRestaurants/#!/Search";

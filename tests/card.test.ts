@@ -31,4 +31,16 @@ describe("buildSourceUrl", () => {
     const url = buildSourceUrl(fac({ j: "nyc", vid: "50000001", lid: "" }));
     expect(url).toBe("https://a816-health.nyc.gov/ABCEatsRestaurants/#!/Search");
   });
+
+  it("links Columbus facilities to their EnvisionConnect record by facility id", () => {
+    const url = buildSourceUrl(fac({ j: "columbus", vid: "FA0000820", lid: "" }));
+    expect(url).toBe(
+      "https://pressagent.envisionconnect.com/fac.phtml?agency=COL&forceresults=1&facid=FA0000820"
+    );
+  });
+
+  it("falls back to the Columbus portal search when the facility id is missing", () => {
+    const url = buildSourceUrl(fac({ j: "columbus", vid: "", lid: "" }));
+    expect(url).toBe("https://pressagent.envisionconnect.com/main.phtml?agency=COL");
+  });
 });

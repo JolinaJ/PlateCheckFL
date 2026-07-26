@@ -50,6 +50,12 @@ and NYC DOHMH (Department of Health and Mental Hygiene).
   CORS, and DBPR sends no CORS headers, so the fetch must run in an
   extension context). The worker must never hold state, make other network
   requests, or do anything besides this fetch proxying.
+- Amended 2026-07-25: the service worker proxy is no longer DBPR-only. It
+  now also proxies on-demand fetches to Columbus Public Health's
+  EnvisionConnect portal (pressagent.envisionconnect.com), which likewise
+  sends no CORS headers. The worker allow-lists both official hosts
+  (myfloridalicense.com, pressagent.envisionconnect.com) and still does
+  nothing but proxy those fetches — no state, no other network access.
 - Added 2026-07-16: NYC is a second jurisdiction, ingested from the NYC
   Open Data DOHMH Restaurant Inspection Results dataset (43nn-pn8j).
   Severity fields hold each authority's own tiers (see
@@ -91,6 +97,25 @@ and NYC DOHMH (Department of Health and Mental Hygiene).
   restyled by this; the prominent variant is exclusive to the panel
   context. The panel card injects even when the same restaurant already
   has a card in the local-pack list (dedupe is per-context).
+- Added 2026-07-25: Columbus, Ohio is a third jurisdiction (j: "columbus").
+  Unlike FL/NYC, Columbus publishes no inspection dates or violation counts
+  in bulk. The bundled overview comes from the Columbus Public Health
+  "Inspected Restaurants & Markets" ArcGIS layer
+  (maps2.columbus.gov/.../Schemas/Health/MapServer/3) — clean matching
+  fields plus a current permit status ("Standards Met" / "Under
+  Enforcement") carried in `di`. Inspection date and critical violations
+  are fetched on demand from the facility's EnvisionConnect record
+  (pressagent.envisionconnect.com, keyed by the shared FACILITY_ID stored
+  in `vid`) when a card is expanded — the same on-demand pattern as DBPR,
+  via the service-worker proxy (the portal sends no CORS headers).
+  Consequences of the missing bulk detail, by design: the collapsed card
+  shows the permit status instead of date/violation badges (never a
+  misleading "0 violations"), and `d`/`hp`/`im`/`ba` are empty/0 in the
+  index. UI vocabulary uses Ohio's official tiers (critical / not critical)
+  and always attributes status and records to Columbus Public Health.
+  Coverage is Columbus + Worthington and interleaved suburb addresses (the
+  ArcGIS food set); surrounding-county health districts (Franklin/Accela,
+  Delaware/HealthSpace) are out of scope pending accessible sources.
 
 ## Tech stack
 
@@ -120,6 +145,7 @@ and NYC DOHMH (Department of Health and Mental Hygiene).
 - `npm run data:download` — download DBPR CSV extracts
 - `npm run data:ingest` — parse CSVs and build extension index
 - `npm run data:nyc` — download NYC dataset and build nyc-index.json
+- `npm run data:columbus` — download Columbus ArcGIS layer and build columbus-index.json
 - `npm run lookup` — CLI restaurant lookup
 
 ## Rules for AI contributors

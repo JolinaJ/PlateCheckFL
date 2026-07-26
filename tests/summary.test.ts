@@ -16,6 +16,21 @@ describe("generateSummary", () => {
     expect(s).toContain("No violations");
   });
 
+  it("summarizes a Columbus facility by its permit status (no bundled date/counts)", () => {
+    const fac: IndexedFacility = {
+      n: "THURMAN CAFE", a: "183 THURMAN AVE", c: "COLUMBUS", z: "43206",
+      ln: "FA0000820", co: "", p: "", d: "", t: "",
+      di: "Standards Met",
+      hp: 0, im: 0, ba: 0, ic: 0,
+      lid: "", vid: "FA0000820", j: "columbus",
+    };
+    const s = generateSummary(fac);
+    expect(s).toContain("Columbus Public Health");
+    expect(s).toContain("Standards Met");
+    // Must not claim a clean/zero-violation record — counts aren't bundled.
+    expect(s).not.toMatch(/no violations|0 (high|critical|basic)/i);
+  });
+
   it("lists violation counts", () => {
     const fac: IndexedFacility = {
       n: "TEST", a: "100 MAIN", c: "MIAMI", z: "33101", ln: "SEA001",
