@@ -152,6 +152,7 @@ function renderColumbusInspection(
           <span class="platecheck-viol-code">${escHtml(v.code)}</span>
         </div>
         <div class="platecheck-viol-desc">${escHtml(v.description)}</div>
+        ${v.comments ? `<div class="platecheck-viol-comments"><span class="platecheck-viol-comments-label">Inspector notes:</span> ${escHtml(v.comments)}</div>` : ""}
       </div>`
     )
     .join("");

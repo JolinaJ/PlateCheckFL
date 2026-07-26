@@ -361,6 +361,18 @@
   line-height: 1.5;
 }
 
+.platecheck-viol-comments {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #5f6368;
+}
+
+.platecheck-viol-comments-label {
+  font-weight: 600;
+  color: #3c4043;
+}
+
 .platecheck-viol-tag {
   font-size: 10px;
   font-weight: 500;

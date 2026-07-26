@@ -6,6 +6,10 @@ export interface ViolationDetail {
   priority: "high" | "intermediate" | "basic";
   correctedOnSite: boolean;
   isRepeat: boolean;
+  // The inspector's free-text observation for this violation. Currently
+  // only populated for Columbus (its EnvisionConnect record carries a
+  // "Comments:" note per violation); empty for DBPR/NYC.
+  comments?: string;
 }
 
 const detailCache = new Map<string, ViolationDetail[]>();
@@ -159,14 +163,18 @@ function parseColumbusViolations(span: Element): ViolationDetail[] {
     if (!codeMatch) continue;
     const code = codeMatch[0];
 
-    // The description is the "Violation:" paragraph; Correction/Comments/
-    // status paragraphs are ignored.
+    // Pull the "Violation:" paragraph as the description and the
+    // "Comments:" paragraph (the inspector's free-text observation) as the
+    // note. The "Correction:" and script-driven status paragraphs are
+    // ignored.
     let description = "";
+    let comments = "";
     for (const p of Array.from(li.querySelectorAll("p"))) {
       const t = (p.textContent ?? "").replace(/\s+/g, " ").trim();
       if (/^violation:/i.test(t)) {
         description = t.replace(/^violation:\s*/i, "").trim();
-        break;
+      } else if (/^comments?:/i.test(t)) {
+        comments = t.replace(/^comments?:\s*/i, "").trim();
       }
     }
     if (!description) {
@@ -186,6 +194,7 @@ function parseColumbusViolations(span: Element): ViolationDetail[] {
       // The portal exposes no structured corrected/repeat flags.
       correctedOnSite: false,
       isRepeat: false,
+      ...(comments ? { comments } : {}),
     });
   }
   return out;

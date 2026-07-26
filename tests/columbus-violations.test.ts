@@ -74,6 +74,24 @@ describe("parseColumbusInspectionFromHtml", () => {
     expect(first.description).not.toMatch(/correction|comments|turkey/i);
   });
 
+  it("captures the inspector's Comments note, separate from the description", () => {
+    const insp = parseColumbusInspectionFromHtml(HTML)!;
+    const first = insp.violations[0];
+    expect(first.comments).toBe("Observed raw turkey stored above sausage.");
+    // The comment must not bleed into the description, and vice versa.
+    expect(first.description).not.toMatch(/observed raw turkey/i);
+    expect(first.comments).not.toMatch(/cross contamination/i);
+  });
+
+  it("omits comments when the violation has none", () => {
+    const html = HTML.replace(
+      /<p><strong>Comments:<\/strong>[^<]*<\/p>/g,
+      ""
+    );
+    const insp = parseColumbusInspectionFromHtml(html)!;
+    expect(insp.violations[0].comments).toBeUndefined();
+  });
+
   it("classifies red items as critical (mapped to the 'high' bucket)", () => {
     const insp = parseColumbusInspectionFromHtml(HTML)!;
     expect(insp.violations.every((v) => v.priority === "high")).toBe(true);
