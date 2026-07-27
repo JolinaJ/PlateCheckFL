@@ -3,14 +3,13 @@ import { matchFacility, buildMatchIndex } from "../matching/dbpr-matcher.js";
 import type { MatchIndex } from "../matching/dbpr-matcher.js";
 import { injectCard, isAlreadyInjected } from "./injector.js";
 import type { IndexedFacility, ParsedQuery } from "../types/extension.js";
-// Import as URLs, not values: this emits each index as a standalone
-// web-accessible asset instead of inlining ~26MB of records into the
-// content-script bundle that loads on every Google Search page. The data
-// is fetched lazily (see loadFacilities) only when a page actually has a
-// restaurant candidate to match.
-import dbprIndexUrl from "../data/dbpr-index.json?url";
-import nycIndexUrl from "../data/nyc-index.json?url";
-import columbusIndexUrl from "../data/columbus-index.json?url";
+// The indexes are imported as URLs, not values, so each is emitted as a
+// standalone web-accessible asset instead of inlining ~28MB of records
+// into the content-script bundle that loads on every Google Search page.
+// The data is fetched lazily (see loadIndex) only when a page actually
+// has a restaurant candidate to match. Which indexes are in the set is a
+// build-time choice — all of them on desktop, one region on mobile.
+import { INDEX_URLS } from "../data/index-set.js";
 
 const DEBOUNCE_MS = 300;
 const LOG_PREFIX = "PlateCheck:";
@@ -26,13 +25,13 @@ function loadIndex(): Promise<MatchIndex> {
   // ?url yields a root-relative path (/assets/…); in a content script that
   // would resolve against the *page* origin (google.com), so route it
   // through chrome.runtime.getURL to hit the extension origin instead.
-  indexPromise = Promise.all([
-    fetch(chrome.runtime.getURL(dbprIndexUrl)).then((r) => r.json() as Promise<IndexedFacility[]>),
-    fetch(chrome.runtime.getURL(nycIndexUrl)).then((r) => r.json() as Promise<IndexedFacility[]>),
-    fetch(chrome.runtime.getURL(columbusIndexUrl)).then((r) => r.json() as Promise<IndexedFacility[]>),
-  ])
-    .then(([dbpr, nyc, columbus]) => {
-      const facilities = dbpr.concat(nyc, columbus);
+  indexPromise = Promise.all(
+    INDEX_URLS.map((url) =>
+      fetch(chrome.runtime.getURL(url)).then((r) => r.json() as Promise<IndexedFacility[]>)
+    )
+  )
+    .then((sets) => {
+      const facilities = sets.flat();
       const index = buildMatchIndex(facilities);
       console.log(`${LOG_PREFIX} ${facilities.length} facilities loaded`);
       return index;
