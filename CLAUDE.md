@@ -82,10 +82,16 @@ and NYC DOHMH (Department of Health and Mental Hygiene).
   the content columns (grid-column 2 / -2) so it aligns with the
   restaurant title and sits beneath Google's panel media strip, above
   both result columns — reading as the panel's inspection footer, not a
-  single-column search result. This applies whenever #center_col does not
-  itself contain the address (the full-width-header and right-rail
-  layouts). When the panel is inside #center_col (whole-page layout), the
-  card injects after the panel wrapper instead. Do NOT anchor to a deep
+  single-column search result. This applies to the full-width-header
+  layout, where neither column contains the address. When the panel is
+  inside #center_col (whole-page layout), the card injects after the panel
+  wrapper instead. Amended 2026-07-26: when the panel lives in the
+  right-hand rail (#rhs contains the address — a common single-business
+  layout), the card is prepended *inside* #rhs, above the panel content,
+  rather than spanning a full-width row above #center_col — otherwise it
+  strands at the top left, visually detached from the panel it describes
+  on the right. #rhs is itself a stable top-level grid item, so the
+  re-render caveat below is satisfied. Do NOT anchor to a deep
   panel module: Google re-renders the knowledge panel after injection and
   displaces any card anchored inside it to the bottom of the page (the bug
   that made the panel card seem to disappear). #rcnt / #center_col are

@@ -22,8 +22,10 @@ export interface RestaurantCandidate {
   // it as the next sibling — used for list rows and panel wrappers.
   // "before" inserts it as the previous sibling — used to drop the panel
   // card as a full-width header row directly above the results column
-  // (#center_col), beneath Google's business panel.
-  placement?: "after" | "before";
+  // (#center_col), beneath Google's business panel. "prepend" inserts it as
+  // the first child — used to place the card inside the right-hand rail
+  // (#rhs), above the panel that lives there.
+  placement?: "after" | "before" | "prepend";
 }
 
 // Returns each parsed restaurant query paired with the exact DOM element it
@@ -120,19 +122,23 @@ const RESULTS_COLUMN_IDS = ["rso", "center_col", "rcnt"];
 // Google DOM (2026-07-22) across the layouts Google serves for a
 // single-restaurant search:
 //
-//   Full-width business header, and right-hand-rail panel: Google's
-//   business panel (title + photos/map/hours/reviews, holding the address)
-//   occupies its own rows while the organic web results live in
-//   #center_col, which does NOT contain the address. #rcnt is a CSS grid;
-//   #center_col and #rhs are its bottom-row columns, and the panel media
-//   strip spans the full width above them. The card is inserted as #rcnt's
-//   child directly *before* #center_col so it becomes its own full-width
-//   row beneath the panel and above both result columns — reading as the
-//   panel's inspection footer, not a single-column search result. The
-//   injector spans it across the content columns to align it with the
-//   restaurant title. #rcnt/#center_col are stable top-level containers,
-//   so (unlike a deep panel module) Google's panel re-render can't displace
-//   the card to the bottom of the page.
+//   Right-hand-rail panel: the whole business panel lives in #rhs, the
+//   right column of the #rcnt grid, while #center_col holds unrelated
+//   organic web results. A full-width row above #center_col would strand
+//   the card at the top left, visually detached from the panel it
+//   describes over on the right. Instead the card is prepended *inside*
+//   #rhs so it sits in the same column, directly above the panel content.
+//   #rhs is a stable top-level grid item, so Google's panel re-render
+//   (which displaces anything anchored inside the panel subtree) can't
+//   move it.
+//
+//   Full-width business header: the panel (title + photos/map/hours,
+//   holding the address) spans its own rows above both columns, and
+//   neither #center_col nor #rhs contains the address. The card is
+//   inserted as #rcnt's child directly *before* #center_col so it becomes
+//   its own full-width row beneath the panel and above both result columns
+//   — reading as the panel's inspection footer. The injector spans it
+//   across the content columns to align it with the restaurant title.
 //
 //   Whole-page panel: the panel is itself inside #center_col, above the
 //   results, so #center_col contains the address. Inserting before it would
@@ -144,7 +150,14 @@ function resolvePanelInjection(
   root: Document | Element,
   titleEl: Element,
   addrEl: Element
-): { entry: Element; placement: "after" | "before" } {
+): { entry: Element; placement: "after" | "before" | "prepend" } {
+  // Right rail first: when the panel itself is in #rhs, the card belongs in
+  // that column, not spanning the page above the left-hand results.
+  const rhs = root.querySelector("#rhs");
+  if (rhs && rhs.contains(addrEl)) {
+    return { entry: rhs, placement: "prepend" };
+  }
+
   const centerCol = root.querySelector("#center_col");
   if (centerCol && centerCol.parentElement && !centerCol.contains(addrEl)) {
     return { entry: centerCol, placement: "before" };

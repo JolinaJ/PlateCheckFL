@@ -43,6 +43,20 @@ describe("injectCard placement", () => {
     expect(card.style.gridColumn).toBe("2 / -2");
   });
 
+  it("prepends the card inside #rhs for the right-rail panel layout", () => {
+    document.body.innerHTML = `<div id="rcnt"><div id="center_col"></div><div id="rhs"><div id="panel"></div></div></div>`;
+    const rhs = document.getElementById("rhs")!;
+    injectCard(rhs, fac(), "confirmed", 1, true, "prepend");
+
+    const card = document.querySelector(".platecheck-host") as HTMLElement;
+    // Card is the first child of the rail, directly above the panel it
+    // describes — not a sibling spanning the page.
+    expect(rhs.firstElementChild).toBe(card);
+    expect(rhs.contains(card)).toBe(true);
+    // Must not carry the full-width grid span used by the "before" layout.
+    expect(card.style.gridColumn).toBe("");
+  });
+
   it("does not inject twice into the same entry", () => {
     document.body.innerHTML = `<div id="center_col"></div>`;
     const centerCol = document.getElementById("center_col")!;

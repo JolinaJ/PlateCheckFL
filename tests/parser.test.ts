@@ -266,6 +266,57 @@ describe("parseRestaurantCandidates", () => {
       expect(entries[0].context).toBe("panel");
     });
 
+    it("prepends into #rhs when the panel lives in the right-hand rail", () => {
+      // Right-rail layout (the one Google serves for many single-business
+      // searches): the whole business panel — including the address — sits
+      // in #rhs, while #center_col holds unrelated organic results. A
+      // full-width row above #center_col would strand the card at the top
+      // left, detached from the panel on the right, so the card goes into
+      // #rhs itself, above the panel content.
+      const html = `<div id="rcnt">
+        <div id="center_col">
+          <div class="g"><h3><a href="#">Demo Deli — official site</a></h3></div>
+        </div>
+        <div id="rhs">
+          <div class="kp-wholepage">
+            <div data-attrid="title">Demo Deli [PlateCheck Demo]</div>
+            <div data-attrid="kc:/location/location:address">
+              <span>Address: </span><span>205 E Houston St, New York, NY 10002</span>
+            </div>
+          </div>
+        </div>
+      </div>`;
+      const doc = new JSDOM(html).window.document;
+      const entries = parseRestaurantEntries(doc);
+      expect(entries).toHaveLength(1);
+      expect(entries[0].entry.id).toBe("rhs");
+      expect(entries[0].placement).toBe("prepend");
+      expect(entries[0].context).toBe("panel");
+    });
+
+    it("still uses the full-width row when #rhs exists but holds no address", () => {
+      // Full-width business header: #rhs is present (ads/related), but the
+      // panel with the address spans above both columns. The card must stay
+      // a full-width row before #center_col, not drop into the rail.
+      const html = `<div id="rcnt">
+        <div class="hdr-strip">
+          <div data-attrid="title">Demo Deli [PlateCheck Demo]</div>
+          <div data-attrid="kc:/location/location:address">
+            <span>Address: </span><span>205 E Houston St, New York, NY 10002</span>
+          </div>
+        </div>
+        <div id="center_col">
+          <div class="g"><h3><a href="#">Demo Deli — official site</a></h3></div>
+        </div>
+        <div id="rhs"><div id="rhsads"></div></div>
+      </div>`;
+      const doc = new JSDOM(html).window.document;
+      const entries = parseRestaurantEntries(doc);
+      expect(entries).toHaveLength(1);
+      expect(entries[0].entry.id).toBe("center_col");
+      expect(entries[0].placement).toBe("before");
+    });
+
     it("injects after the panel wrapper when the panel is inside #center_col", () => {
       // Whole-page panel layout: the panel itself lives inside #center_col
       // above the results, so #center_col contains the address. Prepending
