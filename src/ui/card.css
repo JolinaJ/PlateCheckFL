@@ -392,3 +392,98 @@
   color: #137333;
   border: 1px solid #a8dab5;
 }
+
+/* ---------------------------------------------------------------------
+   Narrow viewports (mobile Safari / Firefox for Android).
+
+   Media queries inside a shadow root still evaluate against the viewport,
+   so this reaches the card normally. Three things change: the card fills
+   the column instead of sitting in a fixed 640/760px block, rows that
+   assume horizontal room are allowed to wrap or stack, and the smallest
+   type and the tap targets are raised to sizes usable with a thumb —
+   under 16px iOS Safari zooms the page on focus, and Apple's touch target
+   guidance is ~44px.
+
+   The prominent (panel) variant collapses to standard metrics here: its
+   whole purpose is extra width and weight, neither of which exists on a
+   phone. Content and language are identical either way.
+   --------------------------------------------------------------------- */
+@media (max-width: 500px) {
+  .platecheck-card,
+  .platecheck-card[data-variant="prominent"] {
+    max-width: none;
+    font-size: 14px;
+    border-radius: 8px;
+  }
+
+  .platecheck-card[data-variant="prominent"] {
+    border-left-width: 4px;
+    box-shadow: 0 1px 6px rgba(60, 64, 67, 0.18);
+  }
+
+  /* The summary line, confidence chip and caret cannot share one row at
+     this width; let the chip and caret fall to their own line. */
+  .platecheck-header,
+  .platecheck-card[data-variant="prominent"] .platecheck-header {
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    padding: 12px 14px;
+    min-height: 44px;
+    box-sizing: border-box;
+  }
+
+  .platecheck-details,
+  .platecheck-card[data-variant="prominent"] .platecheck-details {
+    padding: 0 14px 12px;
+  }
+
+  /* Label/value pairs stack: a fixed label column leaves too little room
+     for addresses and inspection types, which then overflow. */
+  .platecheck-detail-grid,
+  .platecheck-card[data-variant="prominent"] .platecheck-detail-grid {
+    grid-template-columns: 1fr;
+    gap: 2px;
+    font-size: 13px;
+  }
+
+  .platecheck-detail-label {
+    margin-top: 6px;
+  }
+
+  /* Long unbroken strings (addresses, URLs, violation text) must not push
+     the card wider than the screen. */
+  .platecheck-detail-value,
+  .platecheck-viol-desc,
+  .platecheck-viol-comments,
+  .platecheck-summary-text {
+    overflow-wrap: anywhere;
+  }
+
+  .platecheck-violations-toggle,
+  .platecheck-card[data-variant="prominent"] .platecheck-violations-toggle {
+    width: 100%;
+    min-height: 44px;
+    font-size: 14px;
+  }
+
+  .platecheck-summary-text,
+  .platecheck-card[data-variant="prominent"] .platecheck-summary-text,
+  .platecheck-viol-item,
+  .platecheck-card[data-variant="prominent"] .platecheck-viol-item {
+    font-size: 13px;
+  }
+
+  .platecheck-viol-comments {
+    font-size: 13px;
+  }
+
+  .platecheck-disclaimer,
+  .platecheck-card[data-variant="prominent"] .platecheck-disclaimer {
+    font-size: 12px;
+  }
+
+  .platecheck-viol-code,
+  .platecheck-viol-tag {
+    font-size: 12px;
+  }
+}

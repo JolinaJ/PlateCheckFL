@@ -163,14 +163,49 @@ function resolvePanelInjection(
     return { entry: centerCol, placement: "before" };
   }
 
+  // Climb from the title to the direct child of a results column. Only
+  // usable if we actually reach one — a layout without those containers
+  // (mobile Google serves no #rcnt/#center_col/#rso grid) would otherwise
+  // walk all the way to <html> and inject the card outside the document.
   let wrapper: Element = titleEl;
-  while (
-    wrapper.parentElement &&
-    !RESULTS_COLUMN_IDS.includes(wrapper.parentElement.id)
-  ) {
+  while (wrapper.parentElement) {
+    if (RESULTS_COLUMN_IDS.includes(wrapper.parentElement.id)) {
+      return { entry: wrapper, placement: "after" };
+    }
     wrapper = wrapper.parentElement;
   }
-  return { entry: wrapper, placement: "after" };
+
+  // Layout-agnostic fallback: the nearest element containing both the name
+  // and the address is the panel, whatever the markup calls it. Inject
+  // after it so the card lands directly beneath the business block.
+  return { entry: panelContainer(titleEl, addrEl), placement: "after" };
+}
+
+// Elements too coarse to inject after — doing so would place the card
+// outside the document or at the very bottom of the page.
+const UNUSABLE_ANCHORS = new Set(["HTML", "BODY"]);
+
+// The smallest element containing both `a` and `b`, backing off to a tight
+// anchor around the address when that ancestor is too coarse to be useful.
+function panelContainer(a: Element, b: Element): Element {
+  let candidate: Element | null = a;
+  while (candidate && !candidate.contains(b)) {
+    candidate = candidate.parentElement;
+  }
+
+  if (
+    candidate &&
+    !UNUSABLE_ANCHORS.has(candidate.tagName) &&
+    !RESULTS_COLUMN_IDS.includes(candidate.id)
+  ) {
+    return candidate;
+  }
+
+  // The two are only related via the page shell (or a whole results
+  // column). Anchoring to the address keeps the card beside the business
+  // details rather than at the end of the results.
+  const addrParent = b.parentElement;
+  return addrParent && !UNUSABLE_ANCHORS.has(addrParent.tagName) ? addrParent : b;
 }
 
 export function parseRestaurantCandidates(

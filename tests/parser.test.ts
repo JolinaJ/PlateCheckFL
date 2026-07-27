@@ -317,6 +317,51 @@ describe("parseRestaurantCandidates", () => {
       expect(entries[0].placement).toBe("before");
     });
 
+    it("anchors to the panel container when no desktop results column exists", () => {
+      // Mobile Google serves no #rcnt / #center_col / #rso grid. The climb
+      // to a results column finds nothing, so placement falls back to the
+      // nearest element containing both the name and the address — the
+      // business block, whatever the markup calls it. Without this the walk
+      // ran to <html> and injected the card outside the document.
+      const html = `<body>
+        <div class="hdr"></div>
+        <div class="biz-block">
+          <div data-attrid="title">Demo Deli [PlateCheck Demo]</div>
+          <div class="details">
+            <div data-attrid="kc:/location/location:address">
+              <span>Address: </span><span>205 E Houston St, New York, NY 10002</span>
+            </div>
+          </div>
+        </div>
+        <div class="results"></div>
+      </body>`;
+      const doc = new JSDOM(html).window.document;
+      const entries = parseRestaurantEntries(doc);
+      expect(entries).toHaveLength(1);
+      expect(entries[0].entry.className).toBe("biz-block");
+      expect(entries[0].placement).toBe("after");
+      // Never an anchor that would put the card outside the document.
+      expect(["HTML", "BODY"]).not.toContain(entries[0].entry.tagName);
+    });
+
+    it("never anchors to body when title and address share only the page shell", () => {
+      // Degenerate layout: the only common ancestor is <body>. The card
+      // must still land beside the address, not after the whole document.
+      const html = `<body>
+        <div data-attrid="title">Demo Deli [PlateCheck Demo]</div>
+        <div class="addr-wrap">
+          <div data-attrid="kc:/location/location:address">
+            <span>Address: </span><span>205 E Houston St, New York, NY 10002</span>
+          </div>
+        </div>
+      </body>`;
+      const doc = new JSDOM(html).window.document;
+      const entries = parseRestaurantEntries(doc);
+      expect(entries).toHaveLength(1);
+      expect(["HTML", "BODY"]).not.toContain(entries[0].entry.tagName);
+      expect(entries[0].entry.className).toBe("addr-wrap");
+    });
+
     it("injects after the panel wrapper when the panel is inside #center_col", () => {
       // Whole-page panel layout: the panel itself lives inside #center_col
       // above the results, so #center_col contains the address. Prepending
