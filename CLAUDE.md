@@ -136,9 +136,12 @@ and NYC DOHMH (Department of Health and Mental Hygiene).
 - src/summary/ — plain-English summary generation from structured records
 - src/ui/ — card component and styles
 - src/types/ — TypeScript interfaces
-- src/data/ — mock inspection dataset + DBPR index
+- src/data/ — mock inspection dataset + jurisdiction indexes + index-set.ts
+  (which indexes a build bundles; see region-scoped builds below)
+- src/platform/ — cross-browser extension API shim (Chrome/Safari/Firefox)
 - src/ingest/ — DBPR data download and parsing pipeline
 - src/lookup/ — CLI lookup tool
+- scripts/ — build helpers
 - tests/ — unit tests
 - data/raw/ — downloaded DBPR CSVs (gitignored)
 - data/processed/ — processed JSON files (gitignored)
@@ -152,6 +155,10 @@ and NYC DOHMH (Department of Health and Mental Hygiene).
 - `npm run data:ingest` — parse CSVs and build extension index
 - `npm run data:nyc` — download NYC dataset and build nyc-index.json
 - `npm run data:columbus` — download Columbus ArcGIS layer and build columbus-index.json
+- `npm run build:columbus` / `build:nyc` / `build:florida` — region-scoped
+  build bundling only that jurisdiction's index (1.2MB vs 28MB). For mobile,
+  where an iOS Safari extension is terminated for memory well below the
+  full dataset. See MOBILE.md.
 - `npm run lookup` — CLI restaurant lookup
 
 ## Rules for AI contributors
