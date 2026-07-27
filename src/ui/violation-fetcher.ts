@@ -1,4 +1,5 @@
 import type { IndexedFacility } from "../types/extension.js";
+import { runtime } from "../platform/browser-api.js";
 
 export interface ViolationDetail {
   code: string;
@@ -34,7 +35,7 @@ async function fetchDbprViolations(fac: IndexedFacility): Promise<ViolationDetai
   if (!url) return [];
   if (detailCache.has(url)) return detailCache.get(url)!;
 
-  const res = (await chrome.runtime.sendMessage({
+  const res = (await runtime.sendMessage({
     type: "platecheck:fetch",
     url,
   })) as FetchResponse | undefined;
@@ -116,7 +117,7 @@ export async function fetchColumbusInspection(
   if (!url) return null;
   if (columbusCache.has(url)) return columbusCache.get(url)!;
 
-  const res = (await chrome.runtime.sendMessage({
+  const res = (await runtime.sendMessage({
     type: "platecheck:fetch",
     url,
   })) as FetchResponse | undefined;

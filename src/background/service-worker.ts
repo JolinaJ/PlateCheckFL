@@ -11,6 +11,8 @@
 // allow-listed official sources: no state, no analytics, no other network
 // access.
 
+import { runtime } from "../platform/browser-api.js";
+
 const ALLOWED_PREFIXES = [
   "https://www.myfloridalicense.com/",
   "https://pressagent.envisionconnect.com/",
@@ -21,8 +23,9 @@ interface FetchRequest {
   url: string;
 }
 
-chrome.runtime.onMessage.addListener(
-  (message: FetchRequest, _sender, sendResponse) => {
+runtime.onMessage.addListener(
+  (raw: unknown, _sender, sendResponse) => {
+    const message = raw as FetchRequest | undefined;
     if (message?.type !== "platecheck:fetch") return;
 
     const url = String(message.url ?? "");

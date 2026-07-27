@@ -10,6 +10,7 @@ import type { IndexedFacility, ParsedQuery } from "../types/extension.js";
 // has a restaurant candidate to match. Which indexes are in the set is a
 // build-time choice — all of them on desktop, one region on mobile.
 import { INDEX_URLS } from "../data/index-set.js";
+import { runtime } from "../platform/browser-api.js";
 
 const DEBOUNCE_MS = 300;
 const LOG_PREFIX = "PlateCheck:";
@@ -24,10 +25,10 @@ function loadIndex(): Promise<MatchIndex> {
   if (indexPromise) return indexPromise;
   // ?url yields a root-relative path (/assets/…); in a content script that
   // would resolve against the *page* origin (google.com), so route it
-  // through chrome.runtime.getURL to hit the extension origin instead.
+  // through runtime.getURL to hit the extension origin instead.
   indexPromise = Promise.all(
     INDEX_URLS.map((url) =>
-      fetch(chrome.runtime.getURL(url)).then((r) => r.json() as Promise<IndexedFacility[]>)
+      fetch(runtime.getURL(url)).then((r) => r.json() as Promise<IndexedFacility[]>)
     )
   )
     .then((sets) => {
