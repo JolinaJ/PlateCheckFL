@@ -6,3 +6,13 @@ data/raw/
 data/processed/
 .claude/settings.local.json
 *.zip
+
+# One-time snapshot of the FY2025-26 CSVs, kept because DBPR no longer serves
+# that fiscal year. The parsed rows live in data/archive/*.ndjson, which IS
+# committed; these originals additionally hold the per-inspection violation
+# code columns the parser drops. Too large to track -- keep a copy off-machine.
+data/archive-fy2025-26/
+
+# Built by `npm run data:fdacs` (a slow, paced crawl of the FDACS portal) and
+# not bundled by any index-set. Keep a copy off-machine if you rebuild it.
+src/data/fdacs-index.json

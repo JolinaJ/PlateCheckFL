@@ -1,0 +1,5 @@
+# The inspection archive and the bundled indexes are written with LF by the
+# ingest scripts on every platform. Pinning that here keeps a re-ingest of an
+# unchanged extract byte-identical (no diff) whatever core.autocrlf says.
+*.ndjson text eol=lf
+src/data/*.json text eol=lf

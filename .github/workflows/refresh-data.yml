@@ -1,0 +1,72 @@
+# Keeps the bundled DBPR index current.
+#
+# DBPR regenerates its district extracts daily, but each extract holds only the
+# current Florida fiscal year to date and resets every July 1. The ingest
+# therefore merges each download into data/archive/*.ndjson (committed) and
+# rebuilds the index from that archive, so a refresh can only ever add. See
+# src/ingest/inspection-archive.ts.
+#
+# Weekly rather than daily on purpose: roughly 567 inspections are recorded
+# statewide per business day against ~68,000 facilities, so a week of lag
+# leaves about 4% of records superseded while a day leaves 0.8% -- and the
+# index is an 18MB blob that git rewrites in full on every commit. Weekly is
+# where those two curves cross. The extension is only ever as fresh as its
+# last store release anyway.
+name: Refresh DBPR data
+
+on:
+  schedule:
+    # 09:00 UTC Monday. DBPR regenerates its extracts around 10:49 UTC daily,
+    # so this reads Sunday's file rather than racing that morning's rebuild.
+    - cron: "0 9 * * 1"
+  workflow_dispatch:
+
+# Never let two refreshes interleave: both would merge into the same archive
+# and race to commit it.
+concurrency:
+  group: refresh-data
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The committed archive is the accumulated history and the whole
+          # point of the job; a shallow checkout still provides it, but the
+          # sanity check needs HEAD's index to compare against.
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+
+      - run: npm ci
+
+      - name: Download the current DBPR extracts
+        run: npm run data:download
+
+      - name: Merge into the archive and rebuild the index
+        run: npm run data:ingest
+
+      - name: Refuse to publish a collapsed index
+        run: npm run data:check
+
+      - name: Commit if anything changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/archive src/data/dbpr-index.json
+          if git diff --staged --quiet; then
+            echo "No new inspections since the last refresh."
+            exit 0
+          fi
+          COUNT=$(node -e "console.log(JSON.parse(require('fs').readFileSync('src/data/dbpr-index.json','utf8')).length)")
+          git commit -m "Refresh DBPR data ($COUNT facilities)" \
+            -m "Merged the current fiscal-year extract into the inspection archive and rebuilt the extension index."
+          git push
