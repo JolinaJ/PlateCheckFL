@@ -1,5 +1,18 @@
 # Source Validation Spike — DBPR Restaurant Inspection Data
 
+> **Historical.** This is the June 2026 spike that checked DBPR's CSV
+> extracts against one district, before the extension existed. Everything
+> under "Known Gaps" and "Assessment" has since been done or superseded:
+> all 7 districts are ingested; the fiscal-year reset is handled by the
+> committed archive in `data/archive/` (see "Data pipeline" in CLAUDE.md);
+> a weekly GitHub Action refreshes the data and `npm run data:check`
+> guards it; the matcher handles DBPR naming conventions; and individual
+> violation text is fetched on demand from DBPR's inspection detail page
+> instead of being mapped from the category flags. Row counts below are
+> from the June 2026 District 1 file. It's kept for the CSV header
+> reference and the join-key note, which are still accurate. For current
+> behavior, read README.md and CLAUDE.md, not this.
+
 ## Source
 
 **Official page:** https://www2.myfloridalicense.com/hotels-restaurants/public-records/
