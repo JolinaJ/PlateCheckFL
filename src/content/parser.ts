@@ -1,5 +1,5 @@
 import type { RestaurantQuery } from "../types/inspection.js";
-import { SELECTORS } from "./selectors.js";
+import { SELECTORS, MAPS_SELECTORS, PANEL_SELECTORS } from "./selectors.js";
 
 // Matches patterns like "(813) 555-0101" or "813-555-0101"
 const PHONE_PATTERN = /\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/;
@@ -47,10 +47,15 @@ export function parseRestaurantEntries(
 
   try {
     const entries = findLocalResultEntries(root);
-    for (const entry of entries) {
+    for (const { entry, fallback } of entries) {
       if (isTextAd(entry)) continue;
       const query = extractQuery(entry);
       if (!query) continue;
+      // A fallback ([data-cid]) entry is only a listing if it looks like
+      // one: a local-pack details block holding a street or a
+      // "City, ST 12345" line. Dish tiles and video cards carry [data-cid]
+      // too, and have neither.
+      if (fallback && (!hasDetailsContainer(entry) || (!query.street && !query.city))) continue;
 
       const key = queryFingerprint(query);
       if (seen.has(key)) continue;
@@ -66,6 +71,14 @@ export function parseRestaurantEntries(
       seen.add(queryFingerprint(kp.query));
       candidates.push(kp);
     }
+
+    // Google Maps place panel. Inert on Search — it requires Maps' address
+    // button, which Search never renders.
+    const maps = parseMapsPlacePanel(root);
+    if (maps && !seen.has(queryFingerprint(maps.query))) {
+      seen.add(queryFingerprint(maps.query));
+      candidates.push(maps);
+    }
   } catch {
     // Fail silently on unexpected DOM structures
   }
@@ -75,13 +88,97 @@ export function parseRestaurantEntries(
 
 // Knowledge-panel business results carry Google's structured data hooks
 // ([data-attrid]), which are far more stable than layout CSS classes.
+// Parses an open Google Maps place panel (google.com/maps/place/...).
+//
+// The panel is richer than any Search surface: it carries a full
+// street/city/state/ZIP address and a phone number, so these matches get
+// the strongest evidence the matcher supports.
+//
+// Exported for unit testing.
+export function parseMapsPlacePanel(
+  root: Document | Element
+): RestaurantCandidate | null {
+  const panel = root.querySelector(MAPS_SELECTORS.placePanel);
+  if (!panel) return null;
+
+  // The address button is the signature of a Maps place panel. Without it
+  // this is some other [role="main"] (including any on Google Search), and
+  // there is nothing to match against anyway.
+  const addrEl = panel.querySelector(MAPS_SELECTORS.address);
+  if (!addrEl) return null;
+
+  const name = (
+    panel.querySelector(MAPS_SELECTORS.name)?.textContent ??
+    panel.getAttribute("aria-label") ??
+    ""
+  )
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!name || name.length > 200) return null;
+
+  // "Address: 505 Vine St, Cincinnati, OH 45202"
+  const addrText = (addrEl.getAttribute("aria-label") ?? addrEl.textContent ?? "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^address:?\s*/i, "");
+  const address = parseAddressFields(addrText);
+  if (!address.street && !address.city) return null;
+
+  // "Phone: (513) 784-1200"
+  const phoneEl = panel.querySelector(MAPS_SELECTORS.phone);
+  const phone = phoneEl
+    ? extractPhone(phoneEl.getAttribute("aria-label") ?? phoneEl.textContent ?? "")
+    : null;
+
+  const entry = resolveMapsInjection(panel);
+  if (!entry) return null;
+
+  return {
+    query: {
+      name,
+      ...(address.street && { street: address.street }),
+      ...(address.city && { city: address.city }),
+      ...(address.zip && { zip: address.zip }),
+      ...(phone && { phone }),
+    },
+    entry,
+    context: "panel",
+    placement: "after",
+  };
+}
+
+// Finds the title block to insert the card after — the ancestor of the
+// panel's <h1> that is a direct child of the panel's scroll container.
+// This lands the card directly beneath the business name and rating, above
+// the Overview/Menu/Reviews tab strip.
+//
+// Derived positionally from the h1 rather than by class name on purpose:
+// Maps' class names are obfuscated and rotate, and anchoring into a deep
+// panel subtree is what broke the Search knowledge-panel card (Google
+// re-renders and displaces it). The h1 and the scroll container are
+// structural, so this survives a re-render.
+function resolveMapsInjection(panel: Element): Element | null {
+  const container = panel.firstElementChild;
+  const h1 = panel.querySelector(MAPS_SELECTORS.name);
+  if (!container || !h1) return null;
+
+  let block: Element | null = h1;
+  while (block && block.parentElement !== container) {
+    block = block.parentElement;
+  }
+  // Fall back to the scroll container itself, so a structural change that
+  // breaks the walk still produces a card rather than nothing.
+  return block ?? container;
+}
+
 function parseKnowledgePanel(
   root: Document | Element
 ): RestaurantCandidate | null {
-  const titleEl = root.querySelector('[data-attrid="title"]');
-  const addrEl = root.querySelector(
-    '[data-attrid="kc:/location/location:address"], [data-attrid*="location:address"]'
-  );
+  const titleEl = root.querySelector(PANEL_SELECTORS.title);
+  // First non-empty match: live panels can carry an empty placeholder with
+  // the same hook ahead of the real row (seen on a Cincinnati panel,
+  // 2026-09-27).
+  const addrEl = firstWithText(root, PANEL_SELECTORS.address);
   if (!titleEl || !addrEl) return null;
 
   const name = (titleEl.textContent ?? "").trim();
@@ -95,7 +192,7 @@ function parseKnowledgePanel(
   if (!address.street && !address.city) return null;
 
   let phone: string | null = null;
-  const phoneEl = root.querySelector('[data-attrid*="phone"]');
+  const phoneEl = firstWithText(root, PANEL_SELECTORS.phone);
   if (phoneEl) phone = extractPhone(phoneEl.textContent ?? "");
 
   const { entry, placement } = resolvePanelInjection(root, titleEl, addrEl);
@@ -112,6 +209,13 @@ function parseKnowledgePanel(
     context: "panel",
     placement,
   };
+}
+
+function firstWithText(root: Document | Element, selector: string): Element | null {
+  for (const el of root.querySelectorAll(selector)) {
+    if ((el.textContent ?? "").trim()) return el;
+  }
+  return null;
 }
 
 // Top-level containers Google uses for the main results column. The panel
@@ -214,23 +318,33 @@ export function parseRestaurantCandidates(
   return parseRestaurantEntries(root).map((c) => c.query);
 }
 
-function findLocalResultEntries(root: Document | Element): Element[] {
-  const results: Element[] = [];
+function findLocalResultEntries(
+  root: Document | Element
+): Array<{ entry: Element; fallback: boolean }> {
+  const results: Array<{ entry: Element; fallback: boolean }> = [];
+  const seen = new Set<Element>();
 
-  for (const selector of SELECTORS.localResultEntry) {
-    try {
-      const elements = root.querySelectorAll(selector);
-      for (const el of elements) {
-        if (!results.includes(el)) {
-          results.push(el);
+  const collect = (selectors: readonly string[], fallback: boolean) => {
+    for (const selector of selectors) {
+      try {
+        for (const el of root.querySelectorAll(selector)) {
+          if (seen.has(el)) continue;
+          seen.add(el);
+          results.push({ entry: el, fallback });
         }
+      } catch {
+        // Invalid selector in this context — skip
       }
-    } catch {
-      // Invalid selector in this context — skip
     }
-  }
+  };
+  collect(SELECTORS.localResultEntry, false);
+  collect(SELECTORS.localResultEntryFallback, true);
 
   return results;
+}
+
+function hasDetailsContainer(entry: Element): boolean {
+  return SELECTORS.resultDetailsContainer.some((s) => entry.querySelector(s));
 }
 
 function isTextAd(entry: Element): boolean {

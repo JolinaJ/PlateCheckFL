@@ -1,7 +1,13 @@
 import { parseRestaurantEntries, queryFingerprint } from "./parser.js";
-import { matchFacility, buildMatchIndex } from "../matching/dbpr-matcher.js";
+import {
+  matchFacility,
+  buildMatchIndex,
+  coverageLabel,
+  authoritiesForQuery,
+  noMatchCandidates,
+} from "../matching/dbpr-matcher.js";
 import type { MatchIndex } from "../matching/dbpr-matcher.js";
-import { injectCard, isAlreadyInjected } from "./injector.js";
+import { injectCard, injectNoMatchNote, isAlreadyInjected } from "./injector.js";
 import type { IndexedFacility, ParsedQuery } from "../types/extension.js";
 // The indexes are imported as URLs, not values, so each is emitted as a
 // standalone web-accessible asset instead of inlining ~28MB of records
@@ -14,6 +20,13 @@ import { runtime } from "../platform/browser-api.js";
 
 const DEBOUNCE_MS = 300;
 const LOG_PREFIX = "PlateCheck:";
+// Per-listing match detail (the listing text, candidate records, the
+// near-miss shortlist) is for tuning the matcher and prints only in the
+// `npm run dev` watch build, which runs Vite in development mode. Store and
+// region builds print just the name-free lines: "content script active",
+// "N facilities loaded" and one summary per run, which are what MOBILE.md's
+// troubleshooting steps look for.
+const DEBUG = import.meta.env.MODE === "development";
 
 let indexPromise: Promise<MatchIndex> | null = null;
 
@@ -57,8 +70,16 @@ async function runParsing(): Promise<void> {
     // local pack opens its panel, and the panel must still get its
     // prominent card even though the same restaurant already received a
     // card in the list.
+    // Google Maps is a single-page app: opening another place swaps the
+    // panel out and takes the injected card with it, and navigating back
+    // rebuilds it from scratch. So a fingerprint we have already processed
+    // is not proof a card is still on screen — re-process when this
+    // particular element has no card. injectCard marks the element before
+    // it does any work, so this cannot loop.
     const fresh = candidates.filter(
-      (c) => !processedFingerprints.has(`${queryFingerprint(c.query)}|${c.context}`)
+      (c) =>
+        !processedFingerprints.has(`${queryFingerprint(c.query)}|${c.context}`) ||
+        !isAlreadyInjected(c.entry)
     );
 
     // Nothing new to match — don't touch the 26MB indexes. Most Google
@@ -67,9 +88,15 @@ async function runParsing(): Promise<void> {
 
     const index = await loadIndex();
 
+    let checked = 0;
+    let cards = 0;
+    let notes = 0;
+
     for (const { query, entry, context, placement } of fresh) {
+      // Same reasoning as the `fresh` filter above: a seen fingerprint
+      // only means "skip" while its card is still in the document.
       const fp = `${queryFingerprint(query)}|${context}`;
-      if (processedFingerprints.has(fp)) continue;
+      if (processedFingerprints.has(fp) && isAlreadyInjected(entry)) continue;
       processedFingerprints.add(fp);
 
       const matchQuery: ParsedQuery = {
@@ -81,6 +108,7 @@ async function runParsing(): Promise<void> {
       };
 
       const result = matchFacility(matchQuery, index);
+      checked++;
 
       if (
         result.facility &&
@@ -95,39 +123,88 @@ async function runParsing(): Promise<void> {
             context === "panel",
             placement
           );
+          cards++;
         }
 
-        const flags = [
-          result.suiteMismatch && "SUITE MISMATCH",
-          result.streetNameMismatch && "STREET NAME MISMATCH",
-          result.coLocatedCount > 1 && `${result.coLocatedCount} LICENSES AT THIS ADDRESS`,
-        ].filter(Boolean);
+        if (DEBUG) {
+          const flags = [
+            result.suiteMismatch && "SUITE MISMATCH",
+            result.streetNameMismatch && "STREET NAME MISMATCH",
+            result.coLocatedCount > 1 && `${result.coLocatedCount} LICENSES AT THIS ADDRESS`,
+          ].filter(Boolean);
 
-        console.groupCollapsed(
-          `${LOG_PREFIX} ${result.confidence} — ${result.facility.n} (score: ${result.score})${flags.length ? ` [${flags.join(", ")}]` : ""}`
-        );
-        console.log("query:", query.name, query.street ?? "", query.city ?? "");
-        console.log("matched:", result.facility.n, result.facility.a, result.facility.c);
-        console.log("inspection:", result.facility.d, result.facility.di);
-        if (result.suiteMismatch) {
-          console.warn("suite/unit mismatch — query and facility specify different units at the same base address");
+          console.groupCollapsed(
+            `${LOG_PREFIX} ${result.confidence} — ${result.facility.n} (score: ${result.score})${flags.length ? ` [${flags.join(", ")}]` : ""}`
+          );
+          console.log("query:", query.name, query.street ?? "", query.city ?? "");
+          console.log("matched:", result.facility.n, result.facility.a, result.facility.c);
+          console.log("inspection:", result.facility.d, result.facility.di);
+          if (result.suiteMismatch) {
+            console.warn("suite/unit mismatch — query and facility specify different units at the same base address");
+          }
+          if (result.streetNameMismatch) {
+            console.warn("street name mismatch — house number and name match, but the street name text differs (possible street rename)");
+          }
+          if (result.coLocatedCount > 1) {
+            console.warn(`${result.coLocatedCount} licenses share this exact address — showing one of them`);
+          }
+          console.groupEnd();
         }
-        if (result.streetNameMismatch) {
-          console.warn("street name mismatch — house number and name match, but the street name text differs (possible street rename)");
-        }
-        if (result.coLocatedCount > 1) {
-          console.warn(`${result.coLocatedCount} DBPR licenses share this exact address — showing one of them`);
-        }
-        console.groupEnd();
       } else {
-        console.log(
-          `${LOG_PREFIX} ${result.confidence} — "${query.name}"${query.street ? ` @ ${query.street}` : ""} (top score: ${result.candidates[0]?.score ?? 0})`
-        );
+        // No card — say why instead of staying silent. The note is
+        // deliberately subordinate to a real card and its copy describes
+        // our record set only; see src/ui/no-match-note.ts for why that
+        // framing is load-bearing rather than cosmetic.
+        const reason = result.noMatchReason ?? "no-record";
+        if (!isAlreadyInjected(entry)) {
+          injectNoMatchNote(
+            entry,
+            reason,
+            coverageLabel(index),
+            authoritiesForQuery(matchQuery, index),
+            context === "panel",
+            placement
+          );
+          notes++;
+        }
+
+        // The near-miss records are no longer shown to the reader — naming
+        // establishments we could not tie to this listing puts our guess in
+        // front of them as a finding. They remain the most useful thing in
+        // the log when tuning the matcher, so they are reported here, in
+        // development builds only.
+        if (DEBUG) {
+          const shortlist = noMatchCandidates(result, matchQuery);
+          console.groupCollapsed(
+            `${LOG_PREFIX} ${result.confidence} (${reason}) — "${query.name}"${query.street ? ` @ ${query.street}` : ""} (top score: ${result.candidates[0]?.score ?? 0})`
+          );
+          console.log("query:", query.name, query.street ?? "", query.city ?? "", query.zip ?? "");
+          for (const c of result.candidates) {
+            console.log(`  ${c.score} ${c.confidence} — ${c.facility.n} | ${c.facility.a}, ${c.facility.c} ${c.facility.z}`);
+          }
+          if (result.addressOccupant) {
+            console.log("address occupant:", result.addressOccupant.n, "|", result.addressOccupant.a);
+          }
+          console.log("would-have-shown:", shortlist.map((f) => f.n));
+          console.groupEnd();
+        }
       }
+    }
+
+    // One name-free line per run, in every build: counts only, never the
+    // text of a listing or a record.
+    if (checked > 0) {
+      console.log(
+        `${LOG_PREFIX} ${plural(checked, "listing")} checked — ${plural(cards, "card")}, ${plural(notes, "note")}`
+      );
     }
   } catch (e) {
     console.error(`${LOG_PREFIX} error:`, e);
   }
+}
+
+function plural(n: number, word: string): string {
+  return `${n} ${word}${n === 1 ? "" : "s"}`;
 }
 
 function debouncedParsing(): void {

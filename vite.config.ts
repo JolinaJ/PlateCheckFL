@@ -9,7 +9,7 @@ import manifest from "./manifest.json";
 // referenced and Vite never emits them: the mobile builds, which cannot
 // afford ~28MB of records in an iOS Safari extension. See src/data/index-set.ts.
 const REGION = process.env.PLATECHECK_REGION;
-const VALID_REGIONS = ["columbus", "nyc", "florida"];
+const VALID_REGIONS = ["columbus", "cincinnati", "nyc", "florida"];
 
 if (REGION && !VALID_REGIONS.includes(REGION)) {
   throw new Error(

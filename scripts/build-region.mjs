@@ -7,7 +7,7 @@
 // adding cross-env as a dependency for one variable.
 import { build } from "vite";
 
-const VALID_REGIONS = ["columbus", "nyc", "florida"];
+const VALID_REGIONS = ["columbus", "cincinnati", "nyc", "florida"];
 const region = process.argv[2];
 
 if (!VALID_REGIONS.includes(region)) {

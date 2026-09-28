@@ -5,6 +5,7 @@ import {
   normalizeForComparison,
   stripBusinessType,
   streetMatch,
+  normalizeStreet,
 } from "../src/matching/dbpr-matcher";
 import type { IndexedFacility } from "../src/types/extension";
 
@@ -48,6 +49,47 @@ describe("dbprNameSimilarity", () => {
   it("completely different names score low", () => {
     const sim = dbprNameSimilarity("SUNSHINE GRILL", "OCEAN BREEZE SUSHI");
     expect(sim).toBeLessThan(0.3);
+  });
+
+  // Google renders the marketing spelling with diacritics; DBPR's records
+  // are plain ASCII. Before these were folded, the accented letter was
+  // replaced by a space and split the one distinctive token in two, which
+  // dropped a real establishment below NAME_FLOOR and left it unscored.
+  it("folds diacritics: accented name matches the ASCII record", () => {
+    expect(dbprNameSimilarity("Pokébowl Station", "POKEBOWL STATION")).toBe(1.0);
+    expect(dbprNameSimilarity("Crème Bakery", "CREME BAKERY")).toBe(1.0);
+  });
+
+  it("folds diacritics without changing an already-ASCII match", () => {
+    expect(dbprNameSimilarity("Pokebowl Station", "POKEBOWL STATION")).toBe(1.0);
+  });
+
+  // Google renders business names with the typographic apostrophe U+2019,
+  // not the ASCII one the authority's records use. Before these variants
+  // were listed, U+2019 fell through to the punctuation rule and became a
+  // SPACE, so "McDonald's" normalized to "mcdonald s" and scored 0.440
+  // against MCDONALDS -- under NAME_STRONG, which disables the strong-name
+  // paths for essentially every possessive chain in the state.
+  it("treats typographic apostrophes like ASCII ones", () => {
+    expect(dbprNameSimilarity("McDonald’s", "MCDONALDS")).toBe(1.0);
+    expect(dbprNameSimilarity("McDonald's", "MCDONALDS")).toBe(1.0);
+    expect(dbprNameSimilarity("Joe’s Crab Shack", "JOES CRAB SHACK")).toBe(1.0);
+    expect(dbprNameSimilarity("Moe‘s Southwest Grill", "MOES SOUTHWEST GRILL")).toBe(1.0);
+  });
+
+  it("apostrophe is deleted, not spaced, so the token stays whole", () => {
+    expect(normalizeForComparison("McDonald’s")).toBe("mcdonalds");
+    expect(normalizeForComparison("Wendy’s")).toBe("wendys");
+  });
+
+  it("folds tilde and cedilla", () => {
+    expect(dbprNameSimilarity("El Niño", "EL NINO")).toBe(1.0);
+    expect(dbprNameSimilarity("Garçon Bistro", "GARCON BISTRO")).toBe(1.0);
+  });
+
+  // Folding must not make unrelated names collide.
+  it("folding does not inflate unrelated names", () => {
+    expect(dbprNameSimilarity("Café Havana", "CREME BAKERY")).toBeLessThan(0.3);
   });
 });
 
@@ -404,5 +446,115 @@ describe("matchFacility", () => {
       expect(r.confidence).toBe("confirmed");
       expect(r.facility?.ln).toBe("SEA104");
     });
+  });
+});
+
+describe("street suffix variants — Cincinnati", () => {
+  // Cincinnati's licensing system writes "AV" and "WY" where Google writes
+  // "Ave" and "Way". Without canonicalizing them the address similarity
+  // lands at 0.5 — below STREET_STRONG — and never corroborates the match.
+  it("treats AV as Ave and WY as Way", () => {
+    expect(streetMatch("6243 Glenway Ave", "6243 GLENWAY AV").similarity).toBe(1.0);
+    expect(streetMatch("1175 Regina Graeter Way", "1175 REGINA GRAETER WY").similarity).toBe(1.0);
+  });
+
+  it("canonicalizes plaza and expressway spellings", () => {
+    expect(streetMatch("100 Fountain Plaza", "100 FOUNTAIN PLZ").similarity).toBe(1.0);
+    expect(streetMatch("200 Norwood Expressway", "200 NORWOOD EXWY").similarity).toBe(1.0);
+  });
+
+  it("confirms a Cincinnati facility whose address uses the short suffix", () => {
+    const facilities: IndexedFacility[] = [
+      fac({
+        ln: "CIN-HEFD-000311", n: "WENDY'S #940", a: "6243 GLENWAY AV",
+        c: "CINCINNATI", z: "45211", co: "HAMILTON", j: "cincinnati", vt: 22,
+      }),
+    ];
+    const r = matchFacility(
+      { name: "Wendy's", street: "6243 Glenway Ave", city: "Cincinnati", zip: "45211" },
+      facilities
+    );
+    expect(r.confidence).toBe("confirmed");
+    expect(r.facility?.ln).toBe("CIN-HEFD-000311");
+  });
+
+  it("still distinguishes different streets that share a suffix", () => {
+    expect(streetMatch("100 Glenway Ave", "100 LUDLOW AV").similarity).toBeLessThan(0.7);
+  });
+});
+
+// Each street table is applied as one precompiled alternation instead of a
+// RegExp per key per call (building 28 per record made the first no-match
+// on a page take seconds). These pin the output of both passes so the
+// rewrite can't drift: it was checked byte-identical against the old loops
+// over every bundled address.
+describe("normalizeStreet — both canonicalization passes", () => {
+  it("collapses directionals and suffixes, then authority variants", () => {
+    expect(normalizeStreet("100 Northeast 2nd Avenue")).toBe("100 ne 2 ave");
+    expect(normalizeStreet("7 Southwest Street West")).toBe("7 sw st w");
+    expect(normalizeStreet("5 West Street North")).toBe("5 w st n");
+    expect(normalizeStreet("200 Norwood Expressway")).toBe("200 norwood expy");
+    expect(normalizeStreet("3700 Curtiss Pky")).toBe("3700 curtiss pkwy");
+    expect(normalizeStreet("7 Southwest Av.")).toBe("7 sw ave");
+    expect(normalizeStreet("100 Fountain Plz.")).toBe("100 fountain plaza");
+    expect(normalizeStreet("100 N. Main Street, Suite 4")).toBe("100 n main st");
+  });
+
+  it("leaves a key alone when it is only part of a longer word", () => {
+    expect(normalizeStreet("8 Northeaster Blvd")).toBe("8 northeaster blvd");
+    expect(normalizeStreet("1 Streetsboro Rd")).toBe("1 streetsboro rd");
+  });
+
+  it("gives the same answer on repeated calls (no leftover global-regex state)", () => {
+    // The compiled patterns carry the g flag; String.replace resets
+    // lastIndex, but a regression to .test/.exec would not.
+    for (let i = 0; i < 3; i++) {
+      expect(normalizeStreet("6243 GLENWAY AV")).toBe("6243 glenway ave");
+    }
+  });
+});
+
+// A facility name that reduces to one COMMON word must not act as a
+// wildcard. "HOUSE OF TACOS" strips to "tacos" and "CAFFE TRUCK" strips to
+// "truck"; both used to score 0.85 against any query containing that word,
+// which crowded the real record out of the candidate list for "Locos por
+// Tacos Food Truck". Rarity is the discriminator, not token count -- a core
+// of one RARE word ("VERSAILLES REST") is still strong evidence.
+describe("facility-core boost is gated on token rarity", () => {
+  // Enough same-token records that "tacos"/"truck" are common in this index.
+  const filler = Array.from({ length: 40 }, (_, i) =>
+    fac({
+      n: i % 2 === 0 ? `HOUSE OF TACOS ${i}` : `CAFFE TRUCK ${i}`,
+      a: `${500 + i} FILLER RD`,
+      c: "ORLANDO",
+      z: "32801",
+      ln: `FILL${i}`,
+    })
+  );
+  const real = fac({
+    n: "LOCOS POR TACOS FOOD TRUCK",
+    a: "307 SW PINCKNEY ST", c: "MADISON", z: "32340", ln: "REAL1",
+  });
+  const generic = fac({
+    n: "HOUSE OF TACOS", a: "400 SW 22 AVE", c: "MIAMI", z: "33135", ln: "GEN1",
+  });
+  const index = [real, generic, ...filler];
+
+  it("a common single-word core does not reach the candidate list", () => {
+    const r = matchFacility(
+      { name: "Locos por Tacos Food Truck", street: "1712 SW 13th St" },
+      index
+    );
+    const names = r.candidates.map((c) => c.facility.n);
+    expect(names).toContain("LOCOS POR TACOS FOOD TRUCK");
+    expect(names).not.toContain("HOUSE OF TACOS");
+  });
+
+  it("a rare core keeps the boost", () => {
+    const r = matchFacility(
+      { name: "Versailles Restaurant Cuban Cuisine", street: "3555 SW 8th St", city: "Miami" },
+      [fac({ n: "VERSAILLES REST", a: "3555 SW 8TH ST", c: "MIAMI", ln: "V1" }), ...filler]
+    );
+    expect(r.facility?.ln).toBe("V1");
   });
 });

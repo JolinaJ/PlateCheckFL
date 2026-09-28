@@ -4,12 +4,16 @@ import { runtime } from "../platform/browser-api.js";
 export interface ViolationDetail {
   code: string;
   description: string;
-  priority: "high" | "intermediate" | "basic";
+  // The issuing authority's severity tier for this violation. Cincinnati
+  // publishes none, so its violations carry "untiered" — the UI must not
+  // group or label them by severity.
+  priority: "high" | "intermediate" | "basic" | "untiered";
   correctedOnSite: boolean;
   isRepeat: boolean;
-  // The inspector's free-text observation for this violation. Currently
-  // only populated for Columbus (its EnvisionConnect record carries a
-  // "Comments:" note per violation); empty for DBPR/NYC.
+  // The inspector's free-text observation for this violation. Populated
+  // for Columbus (its EnvisionConnect record carries a "Comments:" note
+  // per violation) and Cincinnati (violation_comments); empty for
+  // DBPR/NYC.
   comments?: string;
 }
 
@@ -22,9 +26,12 @@ interface FetchResponse {
 }
 
 const NYC_RESOURCE = "https://data.cityofnewyork.us/resource/43nn-pn8j.json";
+const CINCINNATI_RESOURCE = "https://data.cincinnati-oh.gov/resource/rg6p-b3h3.json";
 
 export async function fetchViolations(fac: IndexedFacility): Promise<ViolationDetail[]> {
-  return fac.j === "nyc" ? fetchNycViolations(fac) : fetchDbprViolations(fac);
+  if (fac.j === "nyc") return fetchNycViolations(fac);
+  if (fac.j === "cincinnati") return fetchCincinnatiViolations(fac);
+  return fetchDbprViolations(fac);
 }
 
 // Florida: the fetch runs in the background service worker — content
@@ -75,7 +82,14 @@ async function fetchNycViolations(fac: IndexedFacility): Promise<ViolationDetail
     .map((r) => ({
       code: r.violation_code ?? "",
       description: r.violation_description!,
-      priority: r.critical_flag === "Critical" ? ("high" as const) : ("basic" as const),
+      // DOHMH publishes a third flag, "Not Applicable" (e.g. Smoke-Free Air
+      // Act items). It is not "Not Critical" and must not be shown as such.
+      priority:
+        r.critical_flag === "Critical"
+          ? ("high" as const)
+          : r.critical_flag === "Not Critical"
+            ? ("basic" as const)
+            : ("untiered" as const),
       // The NYC dataset does not publish these flags.
       correctedOnSite: false,
       isRepeat: false,
@@ -83,6 +97,65 @@ async function fetchNycViolations(fac: IndexedFacility): Promise<ViolationDetail
 
   detailCache.set(url, violations);
   return violations;
+}
+
+// Cincinnati: the Open Data API sends Access-Control-Allow-Origin: * (as
+// NYC's does), so the content script fetches it directly — no service
+// worker involved. The bundled index already carries the violation count;
+// this pulls the text of each one, keyed by the same inspection record and
+// date the index was built from.
+async function fetchCincinnatiViolations(
+  fac: IndexedFacility
+): Promise<ViolationDetail[]> {
+  if (!fac.vid || !fac.d) return [];
+  const iso = mmDdYyyyToIso(fac.d);
+  const url =
+    `${CINCINNATI_RESOURCE}?recordnum_insp=${encodeURIComponent(fac.vid)}` +
+    `&action_date=${encodeURIComponent(iso)}` +
+    `&$select=code,violation_description,violation_comments`;
+  if (detailCache.has(url)) return detailCache.get(url)!;
+
+  const res = await fetch(url, { credentials: "omit" });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+  const rows = (await res.json()) as Array<{
+    code?: string;
+    violation_description?: string;
+    violation_comments?: string;
+  }>;
+
+  const violations: ViolationDetail[] = rows
+    .filter((r) => stripQuotes(r.code))
+    .map((r) => ({
+      code: stripQuotes(r.code),
+      // The description repeats the code as a prefix ("6.4(K) - Controlling
+      // Pests"); drop it, since the code is shown separately.
+      description: stripCodePrefix(
+        stripQuotes(r.violation_description),
+        stripQuotes(r.code)
+      ),
+      // Cincinnati publishes no severity tier for violations.
+      priority: "untiered" as const,
+      // The dataset exposes no corrected/repeat flags.
+      correctedOnSite: false,
+      isRepeat: false,
+      ...(stripQuotes(r.violation_comments)
+        ? { comments: stripQuotes(r.violation_comments) }
+        : {}),
+    }));
+
+  detailCache.set(url, violations);
+  return violations;
+}
+
+// Some rows in the Cincinnati export are wrapped in literal double quotes.
+function stripQuotes(s: string | undefined): string {
+  return (s ?? "").replace(/^"+|"+$/g, "").replace(/\s+/g, " ").trim();
+}
+
+function stripCodePrefix(description: string, code: string): string {
+  if (!code || !description.startsWith(code)) return description;
+  return description.slice(code.length).replace(/^\s*-\s*/, "").trim();
 }
 
 function mmDdYyyyToIso(d: string): string {

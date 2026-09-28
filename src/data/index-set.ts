@@ -12,5 +12,11 @@
 import dbprIndexUrl from "./dbpr-index.json?url";
 import nycIndexUrl from "./nyc-index.json?url";
 import columbusIndexUrl from "./columbus-index.json?url";
+import cincinnatiIndexUrl from "./cincinnati-index.json?url";
 
-export const INDEX_URLS: string[] = [dbprIndexUrl, nycIndexUrl, columbusIndexUrl];
+export const INDEX_URLS: string[] = [
+  dbprIndexUrl,
+  nycIndexUrl,
+  columbusIndexUrl,
+  cincinnatiIndexUrl,
+];

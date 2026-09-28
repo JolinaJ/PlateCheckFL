@@ -1,20 +1,25 @@
 {
   "name": "platecheck-fl",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite build --watch",
+    "dev": "vite build --watch --mode development",
     "build": "vite build",
     "test": "vitest run",
     "data:download": "tsx src/ingest/download.ts",
     "data:ingest": "tsx src/ingest/ingest.ts",
+    "data:check": "node scripts/check-index-sanity.mjs",
+    "data:refresh": "npm run data:download && npm run data:ingest && npm run data:check",
     "data:nyc": "tsx src/ingest/nyc-ingest.ts",
     "data:columbus": "tsx src/ingest/columbus-ingest.ts",
+    "data:cincinnati": "tsx src/ingest/cincinnati-ingest.ts",
     "build:columbus": "node scripts/build-region.mjs columbus",
+    "build:cincinnati": "node scripts/build-region.mjs cincinnati",
     "build:nyc": "node scripts/build-region.mjs nyc",
     "build:florida": "node scripts/build-region.mjs florida",
-    "lookup": "tsx src/lookup/cli.ts"
+    "lookup": "tsx src/lookup/cli.ts",
+    "data:fdacs": "tsx src/ingest/fdacs-ingest.ts"
   },
   "devDependencies": {
     "@crxjs/vite-plugin": "^2.0.0-beta.28",

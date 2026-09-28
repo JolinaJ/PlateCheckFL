@@ -1,5 +1,28 @@
 import type { IndexedFacility } from "../types/extension.js";
 
+// Results whose own text says violations were cited at the inspection,
+// spelled exactly as they appear in each dataset. The NYC and Cincinnati
+// counts are derived by the ingest from violation rows rather than published
+// as a count, so when one of these results sits beside a derived count of 0,
+// the zero is a gap in our data, not the authority's finding.
+// "Approved - Violations Abated" is deliberately absent: it is recorded with
+// no violation rows far more often than with them (a visit where earlier
+// violations were resolved), so a zero there is consistent with the record.
+const NYC_CITED_RESULTS = new Set([
+  "Violations were cited in the following area(s).",
+  "Establishment Closed by DOHMH. Violations were cited in the following area(s) and those requiring immediate action were addressed.",
+]);
+const CINCINNATI_CITED_RESULTS = new Set([
+  "Approved - Minor Violations",
+  "Not In Compliance",
+]);
+
+export function dispositionImpliesViolations(fac: IndexedFacility): boolean {
+  if (fac.j === "nyc") return NYC_CITED_RESULTS.has(fac.di);
+  if (fac.j === "cincinnati") return CINCINNATI_CITED_RESULTS.has(fac.di);
+  return false;
+}
+
 export function generateSummary(fac: IndexedFacility): string {
   const parts: string[] = [];
 
@@ -9,6 +32,17 @@ export function generateSummary(fac: IndexedFacility): string {
   if (fac.j === "columbus") {
     const status = fac.di || "not listed";
     return `Columbus Public Health lists this facility's current permit status as "${status}". Expand the latest inspection to load its date and any critical violations from the official record.`;
+  }
+
+  // FDACS publishes the inspection result and the date of the last visit and
+  // nothing else -- no violation counts, no tiers, no grade. Falling through
+  // to the shared path below would hit `total === 0` and assert "No
+  // violations recorded at this inspection", which the record does not
+  // support: zero is the absence of published data, not a count of zero.
+  if (fac.j === "fdacs") {
+    const result = fac.di || "not listed";
+    const when = fac.d ? ` on ${fac.d}` : "";
+    return `FDACS reports the most recent inspection${when} as "${result}". FDACS does not publish violation counts or severity rankings for these establishments.`;
   }
 
   if (!fac.d) return "No inspection data available in the current dataset.";
@@ -25,9 +59,21 @@ export function generateSummary(fac: IndexedFacility): string {
     }
   }
 
-  const total = fac.hp + fac.im + fac.ba;
-  if (total === 0) {
+  const cincinnati = fac.j === "cincinnati";
+  const total = cincinnati ? (fac.vt ?? 0) : fac.hp + fac.im + fac.ba;
+  if (total === 0 && dispositionImpliesViolations(fac)) {
+    // Never state a zero the result itself contradicts.
+    parts.push(
+      "This result notes violations, but no violation count is available for this inspection. See the official record for details."
+    );
+  } else if (total === 0) {
     parts.push("No violations recorded at this inspection.");
+  } else if (cincinnati) {
+    // The Cincinnati Health Department publishes violations without a
+    // severity tier, so none is reported.
+    parts.push(
+      `${total} violation(s) recorded. Cincinnati does not rank violations by severity.`
+    );
   } else if (fac.j === "nyc") {
     parts.push(
       `${total} violation(s) recorded: ${fac.hp} critical, ${fac.ba} not critical.`
@@ -38,12 +84,10 @@ export function generateSummary(fac: IndexedFacility): string {
     );
   }
 
+  // `ic` counts inspections on record across the archive, not one fiscal
+  // year, for every jurisdiction.
   if (fac.ic > 1) {
-    parts.push(
-      fac.j === "nyc"
-        ? `${fac.ic} inspection(s) on record.`
-        : `${fac.ic} inspection(s) on record in the current fiscal year.`
-    );
+    parts.push(`${fac.ic} inspection(s) on record.`);
   }
 
   return parts.join(" ");

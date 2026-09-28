@@ -2,7 +2,11 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { JSDOM } from "jsdom";
 import { readFileSync } from "fs";
 import { join } from "path";
-import { parseRestaurantCandidates, parseRestaurantEntries } from "../src/content/parser";
+import {
+  parseRestaurantCandidates,
+  parseRestaurantEntries,
+  parseMapsPlacePanel,
+} from "../src/content/parser";
 
 function loadFixture(name: string): Document {
   const html = readFileSync(
@@ -442,6 +446,119 @@ describe("parseRestaurantCandidates", () => {
     });
   });
 
+  // Shapes taken from live Google Search on 2026-09-27 (Florida, NYC,
+  // Columbus and Cincinnati restaurant searches), with names swapped for
+  // fictional ones and Google's obfuscated classes kept only where the
+  // markup really carries them.
+  describe("September 2026 Google Search layout", () => {
+    // The single-restaurant panel: a full-width header holds the title,
+    // and the address/phone rows sit in the right rail under the new
+    // data-local-attribute hooks rather than location:address.
+    const PANEL_2026_09 = `<div id="rcnt">
+      <div class="hdr">
+        <div class="PZPZlf ssJ7i" aria-level="2" data-attrid="title" role="heading">Harbor Light Cafe [PlateCheck Demo]</div>
+        <div data-attrid="subtitle">4.5 · $10–20 · Cuban restaurant</div>
+      </div>
+      <div id="center_col"><div id="rso"><div class="g">organic result</div></div></div>
+      <div id="rhs">
+        <div class="zloOqf PZPZlf" data-dtype="d3ifr" data-local-attribute="d3adr">
+          <span class="w8qArf"><a class="fl" href="#">Address</a><span>:</span> </span>
+          <span class="LrzXr">1420 Palm Avenue, Tampa, FL 33601</span>
+        </div>
+        <div class="zloOqf PZPZlf" data-dtype="d3ifr" data-local-attribute="d3ph">
+          <span class="w8qArf"><a class="fl" href="#">Phone</a><span>:</span> </span>
+          <span class="LrzXr"><a href="#"><span aria-label="Call phone number (813) 555-0101">(813) 555-0101</span></a></span>
+        </div>
+      </div>
+    </div>`;
+
+    // "Menu highlights" dish tiles and a YouTube video card, both of which
+    // carry [data-cid] in the live markup.
+    const MENU_AND_VIDEO_CARDS = `
+      <div class="OYzgjc"><span role="heading" aria-level="2">Menu highlights</span>
+        <div data-cid="/g/11dish1" class="hGvele" data-url="https://www.google.com/local/place/offerings?on=Mojitos">
+          <div role="heading"><span>Mojitos</span></div><div>172 reviews · 17 photos</div>
+        </div>
+        <div data-cid="/g/11dish2" class="hGvele" data-url="https://www.google.com/local/place/offerings?on=Flan">
+          <div role="heading"><span>Cuban Style Flan</span></div><div>1 review · 55 photos</div>
+        </div>
+      </div>
+      <div data-cid="yt1" class="WVV5ke">
+        <div role="heading"><span>Easy White Bread Recipe</span></div>
+        <div>YouTube · A Baking Channel · Jan 28</div>
+      </div>`;
+
+    it("finds the panel through the d3adr and d3ph hooks", () => {
+      const doc = new JSDOM(PANEL_2026_09).window.document;
+      const candidates = parseRestaurantEntries(doc);
+      expect(candidates).toHaveLength(1);
+      expect(candidates[0].context).toBe("panel");
+      expect(candidates[0].query).toEqual({
+        name: "Harbor Light Cafe [PlateCheck Demo]",
+        street: "1420 Palm Avenue",
+        city: "Tampa",
+        zip: "33601",
+        phone: "(813) 555-0101",
+      });
+    });
+
+    it("skips an empty placeholder that shares the address hook", () => {
+      const doc = new JSDOM(
+        PANEL_2026_09.replace(
+          '<div id="rhs">',
+          '<div id="rhs"><div data-local-attribute="d3adr"></div><div data-local-attribute="d3ph"> </div>'
+        )
+      ).window.document;
+      const [panel] = parseRestaurantEntries(doc);
+      expect(panel?.query.street).toBe("1420 Palm Avenue");
+      expect(panel?.query.phone).toBe("(813) 555-0101");
+    });
+
+    it("puts the panel card at the top of the right rail, where the address lives", () => {
+      const doc = new JSDOM(PANEL_2026_09).window.document;
+      const [panel] = parseRestaurantEntries(doc);
+      expect(panel.entry.id).toBe("rhs");
+      expect(panel.placement).toBe("prepend");
+    });
+
+    it("ignores dish tiles and video cards even though they carry data-cid", () => {
+      const doc = new JSDOM(`<div id="search">${MENU_AND_VIDEO_CARDS}</div>`).window.document;
+      expect(parseRestaurantEntries(doc)).toEqual([]);
+    });
+
+    it("yields only the panel when the panel page also shows dish tiles", () => {
+      const doc = new JSDOM(
+        PANEL_2026_09.replace('<div class="g">organic result</div>', MENU_AND_VIDEO_CARDS)
+      ).window.document;
+      const candidates = parseRestaurantEntries(doc);
+      expect(candidates.map((c) => c.query.name)).toEqual([
+        "Harbor Light Cafe [PlateCheck Demo]",
+      ]);
+    });
+
+    it("still accepts a data-cid row that is a real listing with a street", () => {
+      const doc = new JSDOM(`<div id="search">
+        ${MENU_AND_VIDEO_CARDS}
+        <div data-cid="row1">
+          <div role="heading"><span>Flamingo Diner [PlateCheck Demo]</span></div>
+          <div class="rllt__details"><div class="W4Efsd">500 Ocean Drive, Miami Beach, FL 33139</div></div>
+        </div>
+      </div>`).window.document;
+      const candidates = parseRestaurantEntries(doc);
+      expect(candidates.map((c) => c.query.name)).toEqual(["Flamingo Diner [PlateCheck Demo]"]);
+    });
+
+    it("drops a data-cid row with a details block but no address in it", () => {
+      const doc = new JSDOM(`<div id="search">
+        <div data-cid="row2">
+          <div role="heading"><span>Flamingo Diner [PlateCheck Demo]</span></div>
+          <div class="rllt__details"><div class="W4Efsd">Diner · Open until 11 PM</div></div>
+        </div>
+      </div>`).window.document;
+      expect(parseRestaurantEntries(doc)).toEqual([]);
+    });
+  });
+
   describe("unsupported markup", () => {
     it("returns empty array for completely unrelated HTML", () => {
       const doc = new JSDOM("<html><body><p>Hello world</p></body></html>").window.document;
@@ -454,5 +571,90 @@ describe("parseRestaurantCandidates", () => {
       const candidates = parseRestaurantCandidates(doc);
       expect(candidates).toEqual([]);
     });
+  });
+});
+
+// Structure verified against live google.com/maps in August 2026. Class
+// names are deliberately omitted from the fixture: the parser must locate
+// everything via role, data-item-id, and the h1's position, because Maps'
+// real class names are obfuscated and rotate.
+function mapsPanel(options: {
+  name?: string;
+  address?: string | null;
+  phone?: string | null;
+} = {}): Document {
+  const {
+    name = "Jeff Ruby's Steakhouse",
+    address = "Address: 505 Vine St, Cincinnati, OH 45202 ",
+    phone = "Phone: (513) 784-1200 ",
+  } = options;
+  return new JSDOM(`
+    <body>
+      <div role="main" aria-label="${name}">
+        <div>
+          <div id="title-block"><h1>${name}</h1><span>4.7 (3,257) Steak house</span></div>
+          <div id="tab-strip">Overview Menu Reviews About</div>
+          <div>
+            <div>
+              ${address === null ? "" : `<button data-item-id="address" aria-label="${address}"></button>`}
+              ${phone === null ? "" : `<button data-item-id="phone:tel:+15137841200" aria-label="${phone}"></button>`}
+            </div>
+          </div>
+        </div>
+      </div>
+    </body>`).window.document;
+}
+
+describe("parseMapsPlacePanel", () => {
+  it("extracts name, full address and phone from the place panel", () => {
+    const c = parseMapsPlacePanel(mapsPanel())!;
+    expect(c).not.toBeNull();
+    expect(c.query.name).toBe("Jeff Ruby's Steakhouse");
+    expect(c.query.street).toBe("505 Vine St");
+    expect(c.query.city).toBe("Cincinnati");
+    expect(c.query.zip).toBe("45202");
+    // The panel is the only surface that also yields a phone number.
+    expect(c.query.phone).toBe("(513) 784-1200");
+  });
+
+  it("renders the prominent card, placed after the title block", () => {
+    const c = parseMapsPlacePanel(mapsPanel())!;
+    expect(c.context).toBe("panel");
+    expect(c.placement).toBe("after");
+    // Anchored to the h1's block, not a deep subtree — so the card lands
+    // under the name and above the Overview/Menu/Reviews strip.
+    expect((c.entry as HTMLElement).id).toBe("title-block");
+  });
+
+  it("is inert without the address button, so Search's role=main is ignored", () => {
+    expect(parseMapsPlacePanel(mapsPanel({ address: null }))).toBeNull();
+  });
+
+  it("still matches when no phone is listed", () => {
+    const c = parseMapsPlacePanel(mapsPanel({ phone: null }))!;
+    expect(c.query.phone).toBeUndefined();
+    expect(c.query.street).toBe("505 Vine St");
+  });
+
+  it("handles a Cincinnati address written with a short street suffix", () => {
+    const c = parseMapsPlacePanel(
+      mapsPanel({ name: "Wendy's", address: "Address: 6243 Glenway Ave, Cincinnati, OH 45211" })
+    )!;
+    expect(c.query.street).toBe("6243 Glenway Ave");
+    expect(c.query.city).toBe("Cincinnati");
+    expect(c.query.zip).toBe("45211");
+  });
+
+  it("surfaces through parseRestaurantEntries", () => {
+    const entries = parseRestaurantEntries(mapsPanel());
+    expect(entries).toHaveLength(1);
+    expect(entries[0].context).toBe("panel");
+    expect(entries[0].query.city).toBe("Cincinnati");
+  });
+
+  it("does not fire on a page with no Maps panel at all", () => {
+    const doc = new JSDOM(`<body><div role="main"><h1>Some page</h1></div></body>`).window.document;
+    expect(parseMapsPlacePanel(doc)).toBeNull();
+    expect(parseRestaurantEntries(doc)).toHaveLength(0);
   });
 });

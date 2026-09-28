@@ -116,8 +116,11 @@
   color: #5f6368;
 }
 
+/* Badges wrap as whole pills at phone width instead of squeezing their
+   labels ("high priority", "not critical") onto two lines or clipping. */
 .platecheck-violations {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
 }
@@ -130,6 +133,7 @@
   border-radius: 12px;
   font-size: 12px;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .platecheck-viol-badge[data-severity="high"] {
@@ -154,6 +158,24 @@
   background: #e6f4ea;
   color: #137333;
   border: 1px solid #a8dab5;
+}
+
+/* Qualifier on the secondary lookup link. Kept visually quieter than the
+   official source link so the authority's own record stays primary. */
+.platecheck-lookup-note {
+  display: block;
+  margin-top: 2px;
+  font-size: 10px;
+  color: #80868b;
+}
+
+/* Cincinnati publishes violations with no severity ranking. Styled
+   neutrally on purpose: a coloured badge would imply a tier the Health
+   Department never assigned. */
+.platecheck-viol-badge[data-severity="untiered"] {
+  background: #f1f3f4;
+  color: #3c4043;
+  border: 1px solid #dadce0;
 }
 
 /* Official NYC DOHMH posted grade. Deliberately neutral styling: the
@@ -394,6 +416,94 @@
 }
 
 /* ---------------------------------------------------------------------
+   No-match note.
+
+   Shown in place of a card when a listing produced no confident match.
+   It carries no inspection data, so it is deliberately subordinate to the
+   real card: a neutral grey accent instead of the brand blue bar, a flat
+   background, and no shadow. The brand blue on a card is what signals
+   "there is a record here" — reusing it for the absence of one would read
+   as data at a glance.
+
+   Confidence is still communicated in words ("No record shown"), never by
+   the grey alone.
+   --------------------------------------------------------------------- */
+.platecheck-card--nomatch {
+  border: 1px solid #e0e2e5;
+  border-left: 4px solid #9aa0a6;
+  background: #fbfbfc;
+  box-shadow: none;
+}
+
+.platecheck-card--nomatch .platecheck-brand {
+  color: #5f6368;
+}
+
+/* The mark is the only brand colour left on the note; muting it keeps the
+   note from competing with real cards further down the page. */
+.platecheck-card--nomatch .platecheck-logo {
+  opacity: 0.55;
+}
+
+.platecheck-card--nomatch .platecheck-header:hover {
+  background: #f1f3f4;
+}
+
+.platecheck-card--nomatch .platecheck-details {
+  border-top-color: #e6e8ea;
+}
+
+.platecheck-nomatch-headline {
+  color: #3c4043;
+  font-weight: 500;
+}
+
+.platecheck-nomatch-detail {
+  font-size: 12px;
+  color: #3c4043;
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  background: #f1f3f4;
+  border-radius: 4px;
+  line-height: 1.6;
+}
+
+/* Candidate list inside the no-match note. Identity only — name, address
+   and an official link. There is deliberately no badge, count or metric
+   styling here, because none of that data is rendered: attaching an
+   inspection history to a record we could not tie to the listing is the
+   failure this whole path prevents. */
+.platecheck-selfsearch {
+  margin: 10px 0 0;
+  padding: 10px;
+  background: #fff;
+  border: 1px solid #e0e2e5;
+  border-radius: 4px;
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+}
+
+.platecheck-selfsearch-label {
+  font-size: 12px;
+  color: #5f6368;
+  line-height: 1.5;
+}
+
+.platecheck-card[data-variant="prominent"] .platecheck-selfsearch-label {
+  font-size: 13px;
+}
+
+.platecheck-confidence[data-level="none"] {
+  background: #f1f3f4;
+  color: #5f6368;
+}
+
+.platecheck-card[data-variant="prominent"] .platecheck-nomatch-detail {
+  font-size: 13px;
+}
+
+/* ---------------------------------------------------------------------
    Narrow viewports (mobile Safari / Firefox for Android).
 
    Media queries inside a shadow root still evaluate against the viewport,
@@ -469,7 +579,9 @@
   .platecheck-summary-text,
   .platecheck-card[data-variant="prominent"] .platecheck-summary-text,
   .platecheck-viol-item,
-  .platecheck-card[data-variant="prominent"] .platecheck-viol-item {
+  .platecheck-card[data-variant="prominent"] .platecheck-viol-item,
+  .platecheck-nomatch-detail,
+  .platecheck-card[data-variant="prominent"] .platecheck-nomatch-detail {
     font-size: 13px;
   }
 
@@ -485,5 +597,12 @@
   .platecheck-viol-code,
   .platecheck-viol-tag {
     font-size: 12px;
+  }
+
+  /* The official link is the only tap target in the note. */
+  .platecheck-selfsearch-label,
+  .platecheck-selfsearch .platecheck-source-link {
+    font-size: 13px;
+    padding: 6px 0;
   }
 }

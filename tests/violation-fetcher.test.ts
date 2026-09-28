@@ -178,3 +178,73 @@ describe("fetchViolations — NYC (direct Socrata path)", () => {
     expect(sendMessage).not.toHaveBeenCalled();
   });
 });
+
+describe("fetchViolations — Cincinnati (direct Socrata path)", () => {
+  function cinFac(overrides: Partial<IndexedFacility> = {}): IndexedFacility {
+    return {
+      n: "TEST CINCY", a: "6243 GLENWAY AV", c: "CINCINNATI", z: "45211",
+      ln: "CIN-HEFD-000311", co: "HAMILTON", p: "", d: "08/07/2026",
+      t: "CRITICAL CONTROL POINT", di: "Not In Compliance",
+      hp: 0, im: 0, ba: 0, ic: 5,
+      lid: "", vid: "CIN-HEFD-000311-26IN1", j: "cincinnati", vt: 2,
+      ...overrides,
+    };
+  }
+
+  const CIN_ROWS = [
+    {
+      code: "6.4(K)",
+      violation_description: "6.4(K) - Controlling Pests",
+      violation_comments: "Observed the presence of gnats around the bar area.",
+    },
+    {
+      code: "4.8(A)(1)",
+      violation_description: "4.8(A)(1) - Equipment and Utensils - Air-Drying",
+      violation_comments: '""',
+    },
+  ];
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("fetches the visit's violations and assigns no severity tier", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => CIN_ROWS });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const violations = await fetchViolations(cinFac());
+    expect(violations).toHaveLength(2);
+    expect(violations.map((v) => v.priority)).toEqual(["untiered", "untiered"]);
+
+    // The code prefix is dropped from the description — it is shown separately.
+    expect(violations[0].code).toBe("6.4(K)");
+    expect(violations[0].description).toBe("Controlling Pests");
+    expect(violations[0].comments).toBe(
+      "Observed the presence of gnats around the bar area."
+    );
+    // An empty quoted comment is not carried through as a note.
+    expect(violations[1].comments).toBeUndefined();
+
+    const url = fetchMock.mock.calls[0][0] as string;
+    expect(url).toContain("data.cincinnati-oh.gov");
+    expect(url).toContain(encodeURIComponent("CIN-HEFD-000311-26IN1"));
+    expect(url).toContain(encodeURIComponent("2026-08-07T00:00:00.000"));
+  });
+
+  it("does not touch the service worker", async () => {
+    const sendMessage = stubChrome({ ok: true, html: "" });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => [] }));
+
+    await fetchViolations(cinFac({ vid: "CIN-HEFD-000999-26IN1" }));
+    expect(sendMessage).not.toHaveBeenCalled();
+  });
+
+  it("skips rows that carry no violation code", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: true, json: async () => [{ code: "" }] })
+    );
+    const violations = await fetchViolations(cinFac({ vid: "CIN-HEFD-000998-26IN1" }));
+    expect(violations).toEqual([]);
+  });
+});

@@ -1,5 +1,9 @@
 import type { IndexedFacility, MatchConfidence } from "../types/extension.js";
-import { generateSummary, formatDisposition } from "../summary/generator.js";
+import {
+  generateSummary,
+  formatDisposition,
+  dispositionImpliesViolations,
+} from "../summary/generator.js";
 import {
   fetchViolations,
   fetchColumbusInspection,
@@ -13,6 +17,24 @@ import cardStyles from "./card.css?inline";
 // self-contained — no web_accessible_resources entry and no network or
 // extension-URL fetch from the page.
 import logoUrl from "../../icons/icon48.png";
+
+// Violations cited at the facility's latest inspection. Most authorities
+// publish them split across severity tiers; Cincinnati publishes no tier
+// at all, so its untiered count lives in `vt` (see IndexedFacility).
+function violationCount(fac: IndexedFacility): number {
+  if (fac.j === "cincinnati") return fac.vt ?? 0;
+  return fac.hp + fac.im + fac.ba;
+}
+
+// Names the site the "View on …" link in the violations list opens, which is
+// whatever buildSourceUrl() returns. Columbus never reaches that list
+// (wireColumbusInspection has its own labels), and FDACS carries no count, so
+// it gets no violations toggle.
+function sourceSiteName(fac: IndexedFacility): string {
+  if (fac.j === "nyc") return "ABC Eats";
+  if (fac.j === "cincinnati") return "Cincinnati Open Data";
+  return "DBPR";
+}
 
 // `prominent` renders the panel variant: identical structure and
 // behavior to the standard card (collapsed by default, same expandable
@@ -38,7 +60,13 @@ export function createInspectionCard(
   card.dataset.variant = prominent ? "prominent" : "standard";
 
   const sourceUrl = buildSourceUrl(facility);
-  card.innerHTML = buildCardHTML(facility, confidence, coLocatedCount, sourceUrl);
+  card.innerHTML = buildCardHTML(
+    facility,
+    confidence,
+    coLocatedCount,
+    sourceUrl,
+    buildLookupUrl(facility)
+  );
   shadow.appendChild(card);
 
   const header = card.querySelector(".platecheck-header")!;
@@ -56,7 +84,7 @@ export function createInspectionCard(
     }
   });
 
-  const total = facility.hp + facility.im + facility.ba;
+  const total = violationCount(facility);
   if (facility.j === "columbus") {
     // Columbus bundles no counts; the latest inspection + violations are
     // always fetched on demand, so the section is wired unconditionally.
@@ -199,7 +227,7 @@ function wireViolationsToggle(
           const violations = await fetchViolations(fac);
           list.innerHTML = renderViolationList(violations, url, fac);
         } catch {
-          list.innerHTML = `<span class="platecheck-viol-error">Could not load violations. <a class="platecheck-source-link" href="${escHtml(url)}" target="_blank" rel="noopener">View on DBPR</a></span>`;
+          list.innerHTML = `<span class="platecheck-viol-error">Could not load violations. <a class="platecheck-source-link" href="${escHtml(url)}" target="_blank" rel="noopener">View on ${sourceSiteName(fac)}</a></span>`;
         }
       }
     } else {
@@ -215,25 +243,30 @@ function renderViolationList(
   url: string,
   fac: IndexedFacility
 ): string {
-  const sourceName = fac.j === "nyc" ? "NYC Open Data" : "DBPR";
   if (violations.length === 0) {
-    return `<p class="platecheck-viol-empty">No violation details found. <a class="platecheck-source-link" href="${escHtml(url)}" target="_blank" rel="noopener">View on ${sourceName}</a></p>`;
+    return `<p class="platecheck-viol-empty">No violation details found. <a class="platecheck-source-link" href="${escHtml(url)}" target="_blank" rel="noopener">View on ${sourceSiteName(fac)}</a></p>`;
   }
 
-  // Group labels use the issuing authority's own vocabulary.
+  // Group labels use the issuing authority's own vocabulary. Cincinnati
+  // ranks violations in no way at all, so its list is a single unlabelled
+  // group — inventing a heading here would be our judgment, not the
+  // Health Department's record.
   const groups: Array<{
-    key: "high" | "intermediate" | "basic";
+    key: "high" | "intermediate" | "basic" | "untiered";
     label: string;
-  }> = fac.j === "nyc"
-    ? [
-        { key: "high", label: "Critical" },
-        { key: "basic", label: "Not Critical" },
-      ]
-    : [
-        { key: "high", label: "High Priority" },
-        { key: "intermediate", label: "Intermediate" },
-        { key: "basic", label: "Basic" },
-      ];
+  }> = fac.j === "cincinnati"
+    ? [{ key: "untiered", label: "Violations cited" }]
+    : fac.j === "nyc"
+      ? [
+          { key: "high", label: "Critical" },
+          { key: "basic", label: "Not Critical" },
+          { key: "untiered", label: "Critical flag: Not Applicable" },
+        ]
+      : [
+          { key: "high", label: "High Priority" },
+          { key: "intermediate", label: "Intermediate" },
+          { key: "basic", label: "Basic" },
+        ];
 
   return groups
     .map(({ key, label }) => {
@@ -254,6 +287,7 @@ function renderViolationList(
                 ${v.correctedOnSite ? `<span class="platecheck-viol-tag platecheck-viol-tag--corrected">Corrected on site</span>` : ""}
               </div>
               <div class="platecheck-viol-desc">${escHtml(v.description)}</div>
+              ${v.comments ? `<div class="platecheck-viol-comments"><span class="platecheck-viol-comments-label">Inspector notes:</span> ${escHtml(v.comments)}</div>` : ""}
             </div>
           `
             )
@@ -268,16 +302,31 @@ function buildCardHTML(
   fac: IndexedFacility,
   confidence: MatchConfidence,
   coLocatedCount: number,
-  sourceUrl: string
+  sourceUrl: string,
+  lookupUrl: string | null
 ): string {
   const nyc = fac.j === "nyc";
   const columbus = fac.j === "columbus";
+  const cincinnati = fac.j === "cincinnati";
+  const fdacs = fac.j === "fdacs";
+  // Cincinnati publishes violations with no severity tier, so it shows a
+  // single untiered count in place of the per-tier rows and badges.
+  const tiered = !columbus && !cincinnati && !fdacs;
   const disposition = formatDisposition(fac.di);
-  const total = fac.hp + fac.im + fac.ba;
+  const total = violationCount(fac);
+  // The result says violations were cited but our derived count is 0: state
+  // no count anywhere rather than a zero the record contradicts.
+  const countMissing = total === 0 && dispositionImpliesViolations(fac);
   const summary = generateSummary(fac);
   const confidenceLabel = confidence === "confirmed" ? "Matched" : "Partial match";
 
-  const idLabel = columbus ? "Facility ID" : nyc ? "CAMIS" : "License";
+  const idLabel = columbus
+    ? "Facility ID"
+    : nyc
+      ? "CAMIS"
+      : fdacs
+        ? "Permit"
+        : "License";
 
   return `
     <div class="platecheck-header" role="button" tabindex="0" aria-expanded="false" aria-label="Inspection info for ${escHtml(fac.n)}">
@@ -289,7 +338,7 @@ function buildCardHTML(
         <span class="platecheck-date">${escHtml(fac.d)}</span>
         <span class="platecheck-disposition">${escHtml(disposition)}</span>
         ${buildGradeBadge(fac)}
-        ${columbus ? "" : buildViolationBadges(fac, total)}
+        ${columbus || fdacs ? "" : buildViolationBadges(fac, total)}
       </div>
       <span class="platecheck-confidence" data-level="${confidence}">${escHtml(confidenceLabel)}</span>
       <span class="platecheck-expand-icon" aria-hidden="true">▾</span>
@@ -308,13 +357,17 @@ function buildCardHTML(
         `}
         <span class="platecheck-detail-label">Inspection</span>
         <span class="platecheck-detail-value platecheck-inspection-value">${columbus ? "Expand to load the latest inspection" : `${escHtml(fac.t)} — ${escHtml(fac.d)}`}</span>
-        <span class="platecheck-detail-label">${columbus ? "Status" : nyc ? "Action" : "Disposition"}</span>
-        <span class="platecheck-detail-value">${escHtml(fac.di)}${columbus ? " (Columbus Public Health)" : ""}</span>
+        <span class="platecheck-detail-label">${columbus ? "Status" : nyc ? "Action" : cincinnati ? "Result" : fdacs ? "Most recent inspection" : "Disposition"}</span>
+        <span class="platecheck-detail-value">${escHtml(fac.di)}${columbus ? " (Columbus Public Health)" : cincinnati ? " (Cincinnati Health Department)" : fdacs ? " (FDACS)" : ""}</span>
         ${nyc && (fac.g === "A" || fac.g === "B" || fac.g === "C") ? `
         <span class="platecheck-detail-label">Posted grade</span>
         <span class="platecheck-detail-value">${escHtml(fac.g)} (posted by NYC DOHMH)</span>
         ` : ""}
-        ${columbus ? "" : `
+        ${cincinnati && !countMissing ? `
+        <span class="platecheck-detail-label">Violations</span>
+        <span class="platecheck-detail-value">${total} cited at this inspection</span>
+        ` : ""}
+        ${!tiered || countMissing ? "" : `
         <span class="platecheck-detail-label">${nyc ? "Critical" : "High priority"}</span>
         <span class="platecheck-detail-value">${fac.hp}</span>
         ${nyc ? "" : `
@@ -326,7 +379,7 @@ function buildCardHTML(
         `}
         ${fac.ic > 1 ? `
         <span class="platecheck-detail-label">Inspections</span>
-        <span class="platecheck-detail-value">${fac.ic} ${nyc ? "on record" : "in current fiscal year"}</span>
+        <span class="platecheck-detail-value">${fac.ic} on record</span>
         ` : ""}
       </div>
       <div class="platecheck-summary-text">${escHtml(summary)}</div>
@@ -344,7 +397,17 @@ function buildCardHTML(
       </div>
       ` : ""}
       <div class="platecheck-disclaimer">
-        ${columbus ? `
+        ${fdacs ? `
+        FDACS inspection reports are historical snapshots reflecting
+        conditions observed on the date of inspection. FDACS publishes the
+        inspection result and date only — no violation counts, no severity
+        ranking, and no grade — and establishments are not graded or rated.
+        ` : cincinnati ? `
+        Cincinnati Health Department inspection records are historical
+        snapshots reflecting conditions observed on the date of inspection.
+        Violations are published without a severity ranking, and
+        establishments are not graded or scored.
+        ` : columbus ? `
         Columbus Public Health inspection records are historical snapshots
         reflecting conditions observed on the date of inspection.
         Establishments are not graded or rated.
@@ -359,14 +422,44 @@ function buildCardHTML(
         <br>
         <a class="platecheck-source-link" href="${escHtml(sourceUrl)}"
            target="_blank" rel="noopener">
-          ${columbus ? "View official Columbus Public Health inspection record" : nyc ? "View official NYC inspection results (ABC Eats)" : "View official DBPR inspection record"}
+          ${fdacs ? "Look up this permit on the official FDACS inspection search" : cincinnati ? "View official Cincinnati Health Department records" : columbus ? "View official Columbus Public Health inspection record" : nyc ? "View official NYC inspection results (ABC Eats)" : "View official DBPR inspection record"}
         </a>
+        <br>
+        <a class="platecheck-source-link platecheck-terms-link" href="${DISCLAIMER_URL}"
+           target="_blank" rel="noopener">Disclaimer and terms of use</a>
+        ${lookupUrl ? `
+        <br>
+        <a class="platecheck-source-link platecheck-lookup-link" href="${escHtml(lookupUrl)}"
+           target="_blank" rel="noopener">
+          Search by name on the Cincinnati Enquirer's inspection database
+        </a>
+        <span class="platecheck-lookup-note">Not an official record — a news organization's database, compiled from area health departments.</span>
+        ` : ""}
       </div>
     </div>
   `;
 }
 
+// The full terms live outside the card on purpose. Legal text long enough to
+// actually mean something cannot be read inside a Google result row, and
+// repeating it on every card trains people to scroll past it. One durable
+// link, on every surface, to a document with a revision history.
+export const DISCLAIMER_URL =
+  "https://github.com/JolinaJ/PlateCheckFL/blob/main/DISCLAIMER.md";
+
 export function buildSourceUrl(fac: IndexedFacility): string {
+  if (fac.j === "fdacs") {
+    // FDACS publishes no per-entity permalink -- its portal is a stateful
+    // ASP.NET search that cannot be deep-linked -- so this points at the
+    // search itself, the same approach used for NYC and Cincinnati.
+    return "https://foodpermit.fdacs.gov/Reports/SearchFoodEntity.aspx";
+  }
+  if (fac.j === "cincinnati") {
+    // The Health Department publishes no per-facility record page; its
+    // Food Safety Program dataset is the official record, and it can be
+    // filtered by licence number there.
+    return "https://data.cincinnati-oh.gov/d/rg6p-b3h3";
+  }
   if (fac.j === "columbus") {
     return fac.vid
       ? `https://pressagent.envisionconnect.com/fac.phtml?agency=COL&forceresults=1&facid=${encodeURIComponent(fac.vid)}`
@@ -382,28 +475,51 @@ export function buildSourceUrl(fac: IndexedFacility): string {
   return "https://www2.myfloridalicense.com/hotels-restaurants/public-records/";
 }
 
+// A secondary, clearly-labelled lookup for jurisdictions whose authority
+// publishes no per-facility record page. Cincinnati only: the city's own
+// options are a 342K-row dataset landing page, a sign-in-walled dashboard,
+// and an aggregate dashboard with no name search — none of which shows a
+// reader the restaurant they clicked on. The Cincinnati Enquirer compiles
+// area health department inspections into a name-searchable database,
+// which does.
+//
+// This is NOT an official record and must never be labelled as one: it is
+// a news organization's database, and the card says so next to the link.
+// The official link above it stays the authority's own source.
+export function buildLookupUrl(fac: IndexedFacility): string | null {
+  if (fac.j !== "cincinnati") return null;
+  return "https://data.cincinnati.com/restaurant-inspections/";
+}
+
 function buildGradeBadge(fac: IndexedFacility): string {
   if (fac.j !== "nyc") return "";
   if (fac.g === "A" || fac.g === "B" || fac.g === "C") {
-    return `<span class="platecheck-grade">Grade ${escHtml(fac.g)}</span>`;
+    return `<span class="platecheck-grade" title="Letter grade posted by NYC DOHMH">NYC grade ${escHtml(fac.g)}</span>`;
   }
   if (fac.g === "P" || fac.g === "Z") {
-    return `<span class="platecheck-grade">Grade pending</span>`;
+    return `<span class="platecheck-grade" title="Grade pending, per NYC DOHMH">NYC grade pending</span>`;
   }
   return "";
 }
 
+// Header labels use the authority's own tier names in full.
 function buildViolationBadges(fac: IndexedFacility, total: number): string {
   if (total === 0) {
+    if (dispositionImpliesViolations(fac)) return "";
     return `<span class="platecheck-viol-badge" data-severity="none">0 violations</span>`;
+  }
+  // Cincinnati publishes no severity tier, so there is one neutral count
+  // rather than a per-tier breakdown.
+  if (fac.j === "cincinnati") {
+    return `<span class="platecheck-violations"><span class="platecheck-viol-badge" data-severity="untiered">${total}<span class="platecheck-viol-label"> violation${total === 1 ? "" : "s"}</span></span></span>`;
   }
   const nyc = fac.j === "nyc";
   const parts: string[] = [];
   if (fac.hp > 0) {
-    parts.push(`<span class="platecheck-viol-badge" data-severity="high">${fac.hp}<span class="platecheck-viol-label"> ${nyc ? "critical" : "high"}</span></span>`);
+    parts.push(`<span class="platecheck-viol-badge" data-severity="high">${fac.hp}<span class="platecheck-viol-label"> ${nyc ? "critical" : "high priority"}</span></span>`);
   }
   if (fac.im > 0) {
-    parts.push(`<span class="platecheck-viol-badge" data-severity="intermediate">${fac.im}<span class="platecheck-viol-label"> intermed.</span></span>`);
+    parts.push(`<span class="platecheck-viol-badge" data-severity="intermediate">${fac.im}<span class="platecheck-viol-label"> intermediate</span></span>`);
   }
   if (fac.ba > 0) {
     parts.push(`<span class="platecheck-viol-badge" data-severity="basic">${fac.ba}<span class="platecheck-viol-label"> ${nyc ? "not critical" : "basic"}</span></span>`);

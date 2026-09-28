@@ -34,10 +34,22 @@
 // with an address and are parsed like organic rows (decision 2026-07-22).
 // Pure text ads (headline + display URL, no address) are still skipped.
 //
-// [data-cid] is NOT a reliable entry selector on its own: on a
-// single-business knowledge panel (e.g. searching one restaurant's exact
-// name), Google reuses [data-cid] for unrelated "Popular dishes" cards.
-// It is kept only as a last-resort fallback.
+// [data-cid] is NOT a reliable entry selector on its own. Verified against
+// live Google Search on 2026-09-27: Google puts [data-cid] on the "Menu
+// highlights" dish tiles of a single-restaurant panel and on YouTube video
+// cards in ordinary results (including searches that have nothing to do
+// with food). Treated as a primary entry, every one of those became a
+// candidate with no address, and each got a "Not enough address detail"
+// note. So it lives in its own fallback list, and the parser only accepts
+// a fallback entry that holds a local-pack details container AND yields a
+// street or a "City, ST 12345" line — which no dish tile or video card does.
+//
+// Also verified 2026-09-27: the current local pack ("Places") no longer
+// renders .uMdZh/.VkpGBb/.rllt__details rows and shows no street address
+// per row, only a neighbourhood. Those rows produce no candidate (a name
+// and a neighbourhood cannot identify one licensed location). Selecting a
+// row opens its knowledge panel, which does carry the address; see
+// PANEL_SELECTORS.
 export const SELECTORS = {
   // Local-pack container candidates. Google uses several patterns.
   localPackContainer: [
@@ -49,8 +61,11 @@ export const SELECTORS = {
   localResultEntry: [
     ".uMdZh",
     ".VkpGBb",
-    "[data-cid]",
   ],
+
+  // Last-resort entries. Accepted only with a details container and an
+  // address (see the note above).
+  localResultEntryFallback: ["[data-cid]"],
 
   // Restaurant name within a local result.
   resultName: [
@@ -88,4 +103,59 @@ export const SELECTORS = {
     ".mnr-c",
     ".commercial-unit-desktop-top",
   ],
+} as const;
+
+// Google Search single-business knowledge panel.
+//
+// The title keeps its [data-attrid="title"] hook. The address and phone
+// rows moved: as of 2026-09-27 (verified on live panels for a Florida, an
+// NYC, a Columbus and a Cincinnati restaurant) they carry
+// [data-local-attribute="d3adr"] / [data-local-attribute="d3ph"] and no
+// longer any location:address / phone [data-attrid]. Both generations are
+// listed so either layout still matches.
+export const PANEL_SELECTORS = {
+  title: '[data-attrid="title"]',
+  address: [
+    '[data-local-attribute="d3adr"]',
+    '[data-attrid="kc:/location/location:address"]',
+    '[data-attrid*="location:address"]',
+  ].join(", "),
+  phone: ['[data-local-attribute="d3ph"]', '[data-attrid*="phone"]'].join(", "),
+} as const;
+
+// Google Maps place panel (google.com/maps/place/...), verified against
+// live Maps in August 2026.
+//
+// Deliberately uses ONLY role and data-item-id anchors — never Maps'
+// obfuscated class names (.TIHn2, .m6QErb, .DUwDvf), which change without
+// notice. The structure of an open place panel:
+//
+//   DIV[role="main"][aria-label="Jeff Ruby's Steakhouse"]  <- stable
+//     DIV                                   <- scrollable panel body
+//       DIV                                 <- title block (h1 + rating)
+//         H1                                <- "Jeff Ruby's Steakhouse"
+//       DIV                                 <- Overview/Menu/Reviews tabs
+//       ...
+//       DIV
+//         BUTTON[data-item-id="address"]    <- aria-label "Address: 505 Vine St, Cincinnati, OH 45202"
+//         BUTTON[data-item-id^="phone"]     <- aria-label "Phone: (513) 784-1200"
+//
+// The address button is what makes a page identifiable as a Maps place
+// panel: Google Search also has a [role="main"], but never this button.
+// Requiring it keeps these selectors inert on Search.
+//
+// Unlike a Search local-pack row, the panel carries a full street/city/
+// state/ZIP address AND a phone number, so Maps matches get the strongest
+// evidence the matcher supports.
+export const MAPS_SELECTORS = {
+  // The place panel root. aria-label carries the business name.
+  placePanel: 'div[role="main"][aria-label]',
+  // Full address, as "Address: 505 Vine St, Cincinnati, OH 45202".
+  address: 'button[data-item-id="address"]',
+  // Phone, as "Phone: (513) 784-1200". data-item-id is suffixed with the
+  // number itself (phone:tel:+15137841200), hence the prefix match.
+  phone: 'button[data-item-id^="phone"]',
+  // Business name. The h1 is the display name; aria-label on the panel is
+  // the fallback.
+  name: "h1",
 } as const;
